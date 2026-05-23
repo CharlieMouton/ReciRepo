@@ -93,7 +93,7 @@ function useRecipes() {
       const { data } = await sb.from('recipes_with_meta').select('*').order('created_at', { ascending: false });
       setRecipes(
         data && data.length
-          ? data.map(r => ({ id: r.id, title: r.title, author: r.author_username, time: r.time_text || '?', tags: r.tags || [], color: r.color, accent: r.accent, cooks: Number(r.cook_count) || 0 }))
+          ? data.map(r => ({ id: r.id, title: r.title, author: r.author_username, author_id: r.author_id, time: r.time_text || '?', servings: r.servings || 2, tags: r.tags || [], color: r.color, accent: r.accent, cooks: Number(r.cook_count) || 0 }))
           : SAMPLE_RECIPES
       );
     } catch { setRecipes(SAMPLE_RECIPES); }
@@ -331,7 +331,7 @@ function AuthScreen() {
 // ╭─────────────────────────────────────────────────────────────────────────╮
 // │  Home screen                                                            │
 // ╰─────────────────────────────────────────────────────────────────────────╯
-function HomeScreen({ recipes, loading, onNavigate, user }) {
+function HomeScreen({ recipes, loading, onNavigate, onOpenRecipe, user }) {
   const username = user?.user_metadata?.username || user?.email?.split('@')[0] || 'you';
   return (
     <>
@@ -371,7 +371,7 @@ function HomeScreen({ recipes, loading, onNavigate, user }) {
       <div style={{ padding: '14px 20px 110px', display: 'flex', flexDirection: 'column', gap: 11, overflowY: 'auto', height: 'calc(100% - 206px)' }}>
         {loading
           ? <div style={{ paddingTop: 40, textAlign: 'center', font: mono(11), opacity: 0.5, letterSpacing: 1.5, textTransform: 'uppercase' }}>loading…</div>
-          : recipes.map(r => <RecipeCard key={r.id} r={r} onClick={() => onNavigate('cooking')} />)
+          : recipes.map(r => <RecipeCard key={r.id} r={r} onClick={() => onOpenRecipe(r)} />)
         }
       </div>
 
@@ -531,7 +531,8 @@ function LinkScreen({ onNavigate, user, onSaved }) {
 // ╭─────────────────────────────────────────────────────────────────────────╮
 // │  Add manual                                                             │
 // ╰─────────────────────────────────────────────────────────────────────────╯
-function ManualScreen({ onNavigate, user, onSaved }) {
+function ManualScreen({ onNavigate, user, onSaved, editRecipe }) {
+  const isEdit = !!editRecipe;
   const [title, setTitle]           = useState('');
   const [timeText, setTimeText]     = useState('');
   const [servings, setServings]     = useState('2');
@@ -541,6 +542,22 @@ function ManualScreen({ onNavigate, user, onSaved }) {
   const [steps, setSteps]           = useState(['']);
   const [saving, setSaving]         = useState(false);
   const [error, setError]           = useState('');
+
+  useEffect(() => {
+    if (!isEdit || !CONFIGURED) return;
+    (async () => {
+      const [{ data: ings }, { data: stps }] = await Promise.all([
+        sb.from('ingredients').select('*').eq('recipe_id', editRecipe.id).order('sort_order'),
+        sb.from('steps').select('*').eq('recipe_id', editRecipe.id).order('sort_order'),
+      ]);
+      setTitle(editRecipe.title || '');
+      setTimeText(editRecipe.time || '');
+      setServings(String(editRecipe.servings || 2));
+      setTags(editRecipe.tags || []);
+      setIngred(ings?.length ? ings.map(i => ({ qty: i.qty || '', item: i.item || '' })) : [{ qty: '', item: '' }]);
+      setSteps(stps?.length ? stps.map(s => s.text) : ['']);
+    })();
+  }, [editRecipe?.id]);
 
   function addTag(raw) {
     const t = raw.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
@@ -558,16 +575,29 @@ function ManualScreen({ onNavigate, user, onSaved }) {
     setSaving(true); setError('');
     try {
       if (CONFIGURED && user) {
-        const { data: recipe, error: e1 } = await sb.from('recipes').insert({ title: title.trim(), author_id: user.id, time_text: timeText, servings: parseInt(servings) || 2, color: '#E8C36E', accent: '#2F2A2A' }).select().single();
-        if (e1) throw e1;
+        let recipeId;
+        if (isEdit) {
+          const { error: e1 } = await sb.from('recipes').update({ title: title.trim(), time_text: timeText, servings: parseInt(servings) || 2 }).eq('id', editRecipe.id);
+          if (e1) throw e1;
+          recipeId = editRecipe.id;
+          await Promise.all([
+            sb.from('recipe_tags').delete().eq('recipe_id', recipeId),
+            sb.from('ingredients').delete().eq('recipe_id', recipeId),
+            sb.from('steps').delete().eq('recipe_id', recipeId),
+          ]);
+        } else {
+          const { data: recipe, error: e1 } = await sb.from('recipes').insert({ title: title.trim(), author_id: user.id, time_text: timeText, servings: parseInt(servings) || 2, color: '#E8C36E', accent: '#2F2A2A' }).select().single();
+          if (e1) throw e1;
+          recipeId = recipe.id;
+        }
         if (tags.length)
-          await sb.from('recipe_tags').insert(tags.map(t => ({ recipe_id: recipe.id, tag: t })));
+          await sb.from('recipe_tags').insert(tags.map(t => ({ recipe_id: recipeId, tag: t })));
         const validI = ingredients.filter(r => r.item.trim());
         if (validI.length)
-          await sb.from('ingredients').insert(validI.map((r, idx) => ({ recipe_id: recipe.id, qty: r.qty, item: r.item, sort_order: idx })));
+          await sb.from('ingredients').insert(validI.map((r, idx) => ({ recipe_id: recipeId, qty: r.qty, item: r.item, sort_order: idx })));
         const validS = steps.filter(s => s.trim());
         if (validS.length)
-          await sb.from('steps').insert(validS.map((s, idx) => ({ recipe_id: recipe.id, text: s, sort_order: idx })));
+          await sb.from('steps').insert(validS.map((s, idx) => ({ recipe_id: recipeId, text: s, sort_order: idx })));
         onSaved?.();
       }
       onNavigate('home');
@@ -583,7 +613,7 @@ function ManualScreen({ onNavigate, user, onSaved }) {
         <div onClick={() => onNavigate('home')} style={{ width: 32, height: 32, borderRadius: '50%', border: `1.8px solid ${P.ink}`, display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
           <Icon name="close" size={16} />
         </div>
-        <Eyebrow>new · manual</Eyebrow>
+        <Eyebrow>{isEdit ? 'edit · recipe' : 'new · manual'}</Eyebrow>
         <div onClick={!saving ? handleSave : undefined} style={{ padding: '6px 14px', background: saving ? `${P.ink}66` : P.ink, color: P.bg, borderRadius: 999, font: body(12, 700), cursor: saving ? 'not-allowed' : 'pointer' }}>
           {saving ? '…' : 'save'}
         </div>
@@ -734,12 +764,55 @@ function ScanScreen({ onNavigate }) {
 // ╭─────────────────────────────────────────────────────────────────────────╮
 // │  Cooking screen                                                         │
 // ╰─────────────────────────────────────────────────────────────────────────╯
-function CookingScreen({ onNavigate }) {
-  const [stepIdx, setStepIdx] = useState(0);
-  const [serves, setServes]   = useState(SAMPLE_DETAIL.servings);
-  const total = SAMPLE_DETAIL.steps.length;
-  const step  = SAMPLE_DETAIL.steps[stepIdx];
+function CookingScreen({ recipe, user, onNavigate, onDeleted, onEdit }) {
+  const [detail, setDetail]           = useState(null);
+  const [stepIdx, setStepIdx]         = useState(0);
+  const [serves, setServes]           = useState(2);
+  const [confirmDel, setConfirmDel]   = useState(false);
+  const [deleting, setDeleting]       = useState(false);
+
+  const r = recipe || {};
+  const isOwner = CONFIGURED && user?.id && r.author_id && user.id === r.author_id;
+
+  useEffect(() => {
+    setStepIdx(0);
+    setConfirmDel(false);
+    if (!CONFIGURED || !recipe) {
+      setDetail({ ...SAMPLE_DETAIL, title: r.title || SAMPLE_DETAIL.title, author: r.author || SAMPLE_DETAIL.author, time: r.time || SAMPLE_DETAIL.time, cooks: r.cooks ?? SAMPLE_DETAIL.cooks });
+      setServes(r.servings || SAMPLE_DETAIL.servings);
+      return;
+    }
+    setDetail(null);
+    (async () => {
+      const [{ data: ings }, { data: stps }] = await Promise.all([
+        sb.from('ingredients').select('*').eq('recipe_id', recipe.id).order('sort_order'),
+        sb.from('steps').select('*').eq('recipe_id', recipe.id).order('sort_order'),
+      ]);
+      setDetail({
+        title: recipe.title, author: recipe.author, time: recipe.time, cooks: recipe.cooks,
+        servings: recipe.servings || 2,
+        ingredients: ings || [],
+        steps: (stps || []).map(s => ({ text: s.text, timer: s.timer_seconds || 0 })),
+      });
+      setServes(recipe.servings || 2);
+    })();
+  }, [recipe?.id]);
+
+  async function handleDelete() {
+    if (!confirmDel) { setConfirmDel(true); return; }
+    setDeleting(true);
+    try {
+      await sb.from('recipes').delete().eq('id', recipe.id);
+      onDeleted?.();
+    } catch { setDeleting(false); setConfirmDel(false); }
+  }
+
+  const steps = detail?.steps || [];
+  const total = steps.length || 1;
+  const step  = steps[stepIdx] || { text: '', timer: 0 };
+  const origServings = detail?.servings || 2;
   const stepLabel = stepIdx + 1 === total ? 'last one!' : stepIdx < Math.floor(total / 2) ? 'getting started' : 'halfway there';
+
   return (
     <>
       <div style={{ padding: '4px 18px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -747,23 +820,30 @@ function CookingScreen({ onNavigate }) {
           <Icon name="back" size={16} />
         </div>
         <Eyebrow>screen-awake · on</Eyebrow>
-        <div style={{ width: 32, height: 32, borderRadius: '50%', background: P.yellow, border: `1.8px solid ${P.ink}`, display: 'grid', placeItems: 'center' }}>
-          <Icon name="bookmark" size={15} />
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {isOwner && (
+            <div onClick={() => onEdit(recipe)} style={{ width: 32, height: 32, borderRadius: '50%', background: P.yellow, border: `1.8px solid ${P.ink}`, display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
+              <Icon name="pen" size={14} />
+            </div>
+          )}
+          <div style={{ width: 32, height: 32, borderRadius: '50%', background: P.yellow, border: `1.8px solid ${P.ink}`, display: 'grid', placeItems: 'center' }}>
+            <Icon name="bookmark" size={15} />
+          </div>
         </div>
       </div>
       <div style={{ margin: '10px 18px 0', height: 110, borderRadius: 14, overflow: 'hidden', border: `2px solid ${P.ink}`, position: 'relative' }}>
-        <FoodPlaceholder color="#E8C36E" accent={P.ink} label="cacio_e_pepe.jpg" />
+        <FoodPlaceholder color={r.color || '#E8C36E'} accent={r.accent || P.ink} label={typeof r.id === 'string' && r.id.length < 20 ? r.id : null} />
         <div style={{ position: 'absolute', top: 8, left: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Avatar name="maya" size={26} />
-          <Sticker bg={P.red} color={P.bg} rotate={-3}>by maya</Sticker>
+          <Avatar name={r.author || 'maya'} size={26} />
+          <Sticker bg={P.red} color={P.bg} rotate={-3}>by {r.author || 'maya'}</Sticker>
         </div>
         <div style={{ position: 'absolute', bottom: 8, right: 10, display: 'flex', gap: 5 }}>
-          <Sticker bg={P.ink} color={P.bg} rotate={2} size={9}>{SAMPLE_DETAIL.time}</Sticker>
-          <Sticker bg={P.yellow} color={P.ink} rotate={-1} size={9}>{SAMPLE_DETAIL.cooks} cooks</Sticker>
+          <Sticker bg={P.ink} color={P.bg} rotate={2} size={9}>{r.time || '?'}</Sticker>
+          <Sticker bg={P.yellow} color={P.ink} rotate={-1} size={9}>{r.cooks || 0} cooks</Sticker>
         </div>
       </div>
       <div style={{ padding: '10px 18px 0' }}>
-        <div style={{ font: `800 30px/0.9 'Bricolage Grotesque', sans-serif`, letterSpacing: -1, color: P.ink }}>{SAMPLE_DETAIL.title.toLowerCase()}</div>
+        <div style={{ font: `800 30px/0.9 'Bricolage Grotesque', sans-serif`, letterSpacing: -1, color: P.ink }}>{(r.title || '').toLowerCase()}</div>
       </div>
       <div style={{ padding: '12px 18px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, border: `1.8px solid ${P.ink}`, borderRadius: 999, padding: '4px 4px 4px 12px' }}>
@@ -774,29 +854,43 @@ function CookingScreen({ onNavigate }) {
             <div onClick={() => setServes(s => s + 1)} style={{ width: 26, height: 26, borderRadius: '50%', background: P.red, color: P.bg, display: 'grid', placeItems: 'center', cursor: 'pointer' }}><Icon name="plus" size={12} width={2.5} /></div>
           </div>
         </div>
-        <div style={{ font: mono(10), opacity: 0.6 }}>{serves === SAMPLE_DETAIL.servings ? 'as written' : `×${(serves / SAMPLE_DETAIL.servings).toFixed(1)} from original`}</div>
+        <div style={{ font: mono(10), opacity: 0.6 }}>{serves === origServings ? 'as written' : `×${(serves / origServings).toFixed(1)} from original`}</div>
       </div>
       <div style={{ padding: '14px 18px 0', display: 'flex', gap: 18, borderBottom: `1.5px solid ${P.ink}22` }}>
         <div style={{ paddingBottom: 8, font: body(14, 700), opacity: 0.5, cursor: 'pointer' }}>ingredients</div>
         <div style={{ paddingBottom: 8, font: body(14, 800), color: P.ink, borderBottom: `3px solid ${P.red}`, marginBottom: -1.5 }}>steps</div>
         <div style={{ marginLeft: 'auto', font: mono(10), opacity: 0.6, alignSelf: 'center' }}>step-by-step · on</div>
       </div>
-      <div style={{ padding: '14px 18px 0' }}>
-        <div style={{ background: P.paper, border: `2px solid ${P.ink}`, borderRadius: 16, padding: '16px 16px 18px', boxShadow: `4px 4px 0 ${P.ink}` }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-            <div style={{ font: disp(14), color: P.red, letterSpacing: 0.4, textTransform: 'uppercase' }}>step {String(stepIdx + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}</div>
-            <div style={{ font: mono(10), opacity: 0.6 }}>{stepLabel}</div>
+      {!detail ? (
+        <div style={{ padding: '24px 18px', textAlign: 'center', font: mono(11), opacity: 0.45, letterSpacing: 1.5, textTransform: 'uppercase' }}>loading…</div>
+      ) : (
+        <div style={{ padding: '14px 18px 0' }}>
+          <div style={{ background: P.paper, border: `2px solid ${P.ink}`, borderRadius: 16, padding: '16px 16px 18px', boxShadow: `4px 4px 0 ${P.ink}` }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+              <div style={{ font: disp(14), color: P.red, letterSpacing: 0.4, textTransform: 'uppercase' }}>step {String(stepIdx + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}</div>
+              <div style={{ font: mono(10), opacity: 0.6 }}>{stepLabel}</div>
+            </div>
+            {step.text
+              ? <div style={{ font: body(20, 700), lineHeight: 1.2, marginTop: 8, color: P.ink }}>{step.text}</div>
+              : <div style={{ font: body(15, 500), lineHeight: 1.4, marginTop: 8, color: P.ink, opacity: 0.5 }}>no steps added yet</div>
+            }
+            {step.timer > 0 && (
+              <div style={{ marginTop: 14, display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px', background: P.ink, color: P.bg, borderRadius: 999, cursor: 'pointer' }}>
+                <Icon name="play" size={11} />
+                <span style={{ font: disp(14), fontVariantNumeric: 'tabular-nums' }}>{String(Math.floor(step.timer / 60)).padStart(2, '0')}:{String(step.timer % 60).padStart(2, '0')}</span>
+                <span style={{ font: mono(9), opacity: 0.7, letterSpacing: 0.5, textTransform: 'uppercase' }}>tap to start</span>
+              </div>
+            )}
           </div>
-          <div style={{ font: body(20, 700), lineHeight: 1.2, marginTop: 8, color: P.ink }}>{step.text}</div>
-          {step.timer > 0 && (
-            <div style={{ marginTop: 14, display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px', background: P.ink, color: P.bg, borderRadius: 999, cursor: 'pointer' }}>
-              <Icon name="play" size={11} />
-              <span style={{ font: disp(14), fontVariantNumeric: 'tabular-nums' }}>{String(Math.floor(step.timer / 60)).padStart(2, '0')}:{String(step.timer % 60).padStart(2, '0')}</span>
-              <span style={{ font: mono(9), opacity: 0.7, letterSpacing: 0.5, textTransform: 'uppercase' }}>tap to start</span>
+          {isOwner && (
+            <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end' }}>
+              <div onClick={!deleting ? handleDelete : undefined} style={{ font: mono(10), color: confirmDel ? P.bg : P.ink, opacity: confirmDel ? 1 : 0.4, cursor: deleting ? 'not-allowed' : 'pointer', letterSpacing: 0.5, padding: '6px 12px', borderRadius: 999, background: confirmDel ? P.red : 'transparent', border: `1.5px solid ${confirmDel ? P.red : 'transparent'}`, transition: 'all 0.15s' }}>
+                {deleting ? 'deleting…' : confirmDel ? 'tap again to confirm' : 'delete recipe'}
+              </div>
             </div>
           )}
         </div>
-      </div>
+      )}
       <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '14px 18px 28px', background: P.bg, borderTop: `2px solid ${P.ink}`, display: 'grid', gridTemplateColumns: '52px 1fr 52px', gap: 10, alignItems: 'center' }}>
         <div onClick={() => setStepIdx(i => Math.max(0, i - 1))} style={{ height: 52, borderRadius: 14, border: `2px solid ${P.ink}`, display: 'grid', placeItems: 'center', cursor: 'pointer', opacity: stepIdx === 0 ? 0.3 : 1 }}>
           <Icon name="back" size={20} />
@@ -819,12 +913,17 @@ function CookingScreen({ onNavigate }) {
 // │  App root                                                               │
 // ╰─────────────────────────────────────────────────────────────────────────╯
 function App() {
-  const user                          = useAuth();
-  const { recipes, loading, reload }  = useRecipes();
-  const [screen, setScreen]           = useState('home');
+  const user                                    = useAuth();
+  const { recipes, loading, reload }            = useRecipes();
+  const [screen, setScreen]                     = useState('home');
+  const [selectedRecipe, setSelectedRecipe]     = useState(null);
+  const [editRecipe, setEditRecipe]             = useState(null);
 
-  const navigate = (s) => setScreen(s);
-  const navigateAndReload = (s) => { setScreen(s); reload(); };
+  const navigate    = (s) => setScreen(s);
+  function openRecipe(r) { setSelectedRecipe(r); setScreen('cooking'); }
+  function openEdit(r)   { setEditRecipe(r); setScreen('manual'); }
+  function afterSaved()  { reload(); setScreen('home'); }
+  function afterDeleted(){ setSelectedRecipe(null); reload(); setScreen('home'); }
 
   // Still checking session
   if (user === undefined) {
@@ -852,12 +951,12 @@ function App() {
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#1a1815', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <Phone>
-        {(screen === 'home' || screen === 'sheet') && <HomeScreen recipes={recipes} loading={loading} onNavigate={navigate} user={user} />}
+        {(screen === 'home' || screen === 'sheet') && <HomeScreen recipes={recipes} loading={loading} onNavigate={navigate} onOpenRecipe={openRecipe} user={user} />}
         {screen === 'sheet'   && <SheetOverlay onNavigate={navigate} />}
-        {screen === 'manual'  && <ManualScreen onNavigate={navigate} user={user} onSaved={reload} />}
+        {screen === 'manual'  && <ManualScreen onNavigate={navigate} user={user} editRecipe={editRecipe} onSaved={() => { setEditRecipe(null); afterSaved(); }} />}
         {screen === 'link'    && <LinkScreen   onNavigate={navigate} user={user} onSaved={reload} />}
         {screen === 'scan'    && <ScanScreen   onNavigate={navigate} />}
-        {screen === 'cooking' && <CookingScreen onNavigate={navigate} />}
+        {screen === 'cooking' && <CookingScreen recipe={selectedRecipe} user={user} onNavigate={navigate} onDeleted={afterDeleted} onEdit={openEdit} />}
       </Phone>
     </div>
   );
