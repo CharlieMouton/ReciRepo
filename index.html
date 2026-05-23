@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ReciRepo</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      background: #1a1815;
+      font-family: 'Hanken Grotesk', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+    #root {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    /* On narrow screens fill the viewport */
+    @media (max-width: 430px) {
+      #root { align-items: stretch; }
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel">
+const { useState } = React;
+
+// ── Design tokens ──────────────────────────────────────────────────────────
+const P = {
+  bg:     '#FCEDE2',
+  ink:    '#2F2A2A',
+  red:    '#D94F4F',
+  yellow: '#F6C26B',
+  paper:  '#F7E0CE',
+};
+const mono  = (sz, w = 500) => `${w} ${sz}px/1 'IBM Plex Mono', monospace`;
+const disp  = (sz, w = 800) => `${w} ${sz}px/0.95 'Bricolage Grotesque', sans-serif`;
+const body  = (sz, w = 500) => `${w} ${sz}px/1.35 'Hanken Grotesk', sans-serif`;
+
+// ── Sample data ────────────────────────────────────────────────────────────
+const RECIPES = [
+  { id: 'cacio',  title: 'Cacio e Pepe',               author: 'maya',   time: '20 min', tags: ['pasta','weeknight'],    color: '#E8C36E', accent: '#2F2A2A', cooks: 14, photo: true  },
+  { id: 'eggs',   title: 'Chili crisp eggs over rice',  author: 'daniel', time: '12 min', tags: ['breakfast','spicy'],    color: '#C2562E', accent: '#FCEDE2', cooks: 31, photo: true  },
+  { id: 'short',  title: 'Burnt honey shortbread',      author: 'priya',  time: '45 min', tags: ['dessert','bake'],       color: '#8E4A1E', accent: '#FCEDE2', cooks:  7, photo: false },
+  { id: 'cuke',   title: 'Smashed cucumber salad',      author: 'jordan', time: '10 min', tags: ['side','vegan'],         color: '#6B7A3E', accent: '#FCEDE2', cooks: 22, photo: true  },
+  { id: 'tahdig', title: 'Saffron tahdig',              author: 'layla',  time: '1 h 15', tags: ['rice','persian'],       color: '#D94F4F', accent: '#FCEDE2', cooks:  9, photo: false },
+  { id: 'ramen',  title: 'Miso brown-butter ramen',     author: 'theo',   time: '25 min', tags: ['soup','cozy'],          color: '#3B3A2E', accent: '#F6C26B', cooks: 18, photo: true  },
+  { id: 'lassi',  title: 'Strawberry lassi',            author: 'riya',   time: '5 min',  tags: ['drink'],                color: '#F2A2A2', accent: '#2F2A2A', cooks: 12, photo: false },
+  { id: 'dump',   title: 'Crispy rice-paper dumplings', author: 'wen',    time: '35 min', tags: ['snack','crunchy'],      color: '#E89B5A', accent: '#2B2A26', cooks: 27, photo: true  },
+];
+
+const DETAIL = {
+  title: 'Cacio e Pepe',
+  author: 'maya',
+  time: '20 min',
+  servings: 2,
+  tags: ['pasta','weeknight','4-ingredient'],
+  cooks: 14,
+  steps: [
+    { text: 'Toast cracked pepper in a dry pan over medium heat until fragrant.',                                                                          timer: 60  },
+    { text: 'Boil spaghetti in heavily salted water until very al dente.',                                                                                 timer: 480 },
+    { text: 'Reserve a cup of pasta water. Drain. Take pan off heat.',                                                                                    timer: 0   },
+    { text: 'Toss pasta with toasted pepper. Add pecorino in handfuls, splashing pasta water until silky and creamy.',                                    timer: 0   },
+    { text: 'Plate. Shower with more pecorino and a crack of pepper.',                                                                                    timer: 0   },
+  ],
+};
+
+// ── Icons ──────────────────────────────────────────────────────────────────
+function Icon({ name, size = 20, stroke = 'currentColor', width = 2, style }) {
+  const p = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none',
+              stroke, strokeWidth: width, strokeLinecap: 'round', strokeLinejoin: 'round', style };
+  switch (name) {
+    case 'search':   return <svg {...p}><circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/></svg>;
+    case 'plus':     return <svg {...p}><path d="M12 5v14M5 12h14"/></svg>;
+    case 'close':    return <svg {...p}><path d="M6 6l12 12M18 6l-12 12"/></svg>;
+    case 'arrow':    return <svg {...p}><path d="M5 12h14M13 5l7 7-7 7"/></svg>;
+    case 'back':     return <svg {...p}><path d="M19 12H5M11 5l-7 7 7 7"/></svg>;
+    case 'user':     return <svg {...p}><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg>;
+    case 'camera':   return <svg {...p}><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7l2-3h4l2 3"/><circle cx="12" cy="13" r="3.5"/></svg>;
+    case 'link':     return <svg {...p}><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 10-5.7-5.7L11 7"/><path d="M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 105.7 5.7L13 17"/></svg>;
+    case 'pen':      return <svg {...p}><path d="M4 20l4-1 12-12-3-3L5 16l-1 4z"/></svg>;
+    case 'check':    return <svg {...p}><path d="M5 13l4 4L19 7"/></svg>;
+    case 'minus':    return <svg {...p}><path d="M5 12h14"/></svg>;
+    case 'play':     return <svg {...p}><path d="M7 4l13 8-13 8V4z" fill="currentColor"/></svg>;
+    case 'sparkle':  return <svg {...p}><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z"/></svg>;
+    case 'home':     return <svg {...p}><path d="M4 10l8-6 8 6v10H4V10z"/><path d="M9 20v-6h6v6"/></svg>;
+    case 'bookmark': return <svg {...p}><path d="M6 4h12v17l-6-4-6 4V4z"/></svg>;
+    case 'flash':    return <svg {...p}><path d="M13 3L4 14h7l-1 7 9-11h-7l1-7z"/></svg>;
+    case 'gallery':  return <svg {...p}><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="M21 17l-5-6-5 5-3-3-5 5"/></svg>;
+    case 'flip':     return <svg {...p}><path d="M21 4v6h-6"/><path d="M3 20v-6h6"/><path d="M21 10A9 9 0 005 7M3 14a9 9 0 0016 3"/></svg>;
+    default:         return null;
+  }
+}
+
+// ── Avatar ─────────────────────────────────────────────────────────────────
+function Avatar({ name = '?', size = 32, style }) {
+  let h = 2166136261;
+  for (let i = 0; i < name.length; i++) { h ^= name.charCodeAt(i); h = (h * 16777619) >>> 0; }
+  const palettes = [
+    ['#D94F4F','#FCEDE2'],['#F6C26B','#2F2A2A'],['#A8431A','#F0E3CC'],['#C68A3E','#2F2A2A'],
+    ['#6B7A3E','#F6C26B'],['#2F2A2A','#F6C26B'],['#8E3A52','#FCEDE2'],['#E89B5A','#2F2A2A'],
+  ];
+  const [bg, fg] = palettes[h % palettes.length];
+  const shapes = ['circle','square','diamond','bar','half','donut'];
+  const shape = shapes[(h >> 4) % shapes.length];
+  const rot = ((h >> 8) % 8) * 15;
+  const off = ((h >> 12) % 5) - 2;
+  const C = 32, cx = 16 + off, cy = 16 + off;
+  let mark;
+  switch (shape) {
+    case 'circle':  mark = <circle cx={cx} cy={cy} r={9} fill={fg} />; break;
+    case 'square':  mark = <rect x={cx-9} y={cy-9} width={18} height={18} fill={fg} />; break;
+    case 'diamond': mark = <rect x={cx-8} y={cy-8} width={16} height={16} fill={fg} transform={`rotate(45 ${cx} ${cy})`} />; break;
+    case 'bar':     mark = <rect x={0} y={cy-5} width={C} height={10} fill={fg} />; break;
+    case 'half':    mark = <><circle cx={cx} cy={cy} r={10} fill={fg}/><rect x={cx-11} y={cy-11} width={22} height={11} fill={bg}/></>; break;
+    default:        mark = <><circle cx={cx} cy={cy} r={10} fill={fg}/><circle cx={cx} cy={cy} r={4} fill={bg}/></>; break;
+  }
+  return (
+    <div aria-label={`avatar for ${name}`} style={{
+      width: size, height: size, borderRadius: '50%', background: bg, overflow: 'hidden',
+      display: 'inline-block', flexShrink: 0, border: `1.8px solid ${P.ink}`, ...style,
+    }}>
+      <svg viewBox={`0 0 ${C} ${C}`} width="100%" height="100%"
+           style={{ display: 'block', transform: `rotate(${rot}deg)` }}>{mark}</svg>
+    </div>
+  );
+}
+
+// ── FoodPlaceholder ────────────────────────────────────────────────────────
+function FoodPlaceholder({ color = '#C2562E', accent = '#FCEDE2', label, stripes = true, children }) {
+  return (
+    <div style={{
+      position: 'relative', width: '100%', height: '100%', background: color, color: accent,
+      backgroundImage: stripes ? 'repeating-linear-gradient(135deg,transparent 0 18px,rgba(0,0,0,0.045) 18px 19px)' : 'none',
+      display: 'flex', alignItems: 'flex-end', overflow: 'hidden',
+    }}>
+      {label && (
+        <div style={{ font: mono(9), letterSpacing: 0.4, textTransform: 'uppercase', padding: '6px 7px',
+          margin: 8, borderRadius: 3, background: 'rgba(0,0,0,0.18)', backdropFilter: 'blur(4px)',
+          color: accent, opacity: 0.85 }}>{label}
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}
+
+// ── Sticker ────────────────────────────────────────────────────────────────
+function Sticker({ children, bg = P.red, color = P.bg, rotate = -2, size = 10, style }) {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      padding: '6px 10px 4px', background: bg, color,
+      font: disp(size, 700), letterSpacing: 0.2, textTransform: 'lowercase',
+      borderRadius: 999, transform: `rotate(${rotate * 0.4}deg)`, whiteSpace: 'nowrap', ...style,
+    }}>{children}</span>
+  );
+}
+
+// ── Eyebrow ────────────────────────────────────────────────────────────────
+function Eyebrow({ children, style }) {
+  return <div style={{ font: mono(10, 600), letterSpacing: 2, textTransform: 'uppercase', color: P.ink, opacity: 0.7, ...style }}>{children}</div>;
+}
+
+// ── Wordmark ───────────────────────────────────────────────────────────────
+function Wordmark({ size = 22 }) {
+  return (
+    <div style={{ font: disp(size), letterSpacing: -1, color: P.ink, display: 'flex', alignItems: 'center', gap: 2, fontStretch: '75%' }}>
+      <span>reci</span>
+      <span style={{ background: P.red, color: P.bg, padding: '2px 7px 3px', borderRadius: 5, transform: 'rotate(-1.5deg)', display: 'inline-block' }}>repo</span>
+    </div>
+  );
+}
+
+// ── Tab bar ────────────────────────────────────────────────────────────────
+function TabBar({ active, onNavigate }) {
+  const items = [
+    { key: 'home',    icon: 'home',     label: 'feed' },
+    { key: 'saved',   icon: 'bookmark', label: 'saved' },
+    { key: 'sheet',   icon: 'plus',     label: 'add',  fab: true },
+    { key: 'search',  icon: 'search',   label: 'search' },
+    { key: 'profile', icon: 'user',     label: 'you' },
+  ];
+  return (
+    <div style={{
+      position: 'absolute', left: 0, right: 0, bottom: 0, padding: '10px 18px 28px',
+      background: P.bg, borderTop: `2px solid ${P.ink}`,
+      display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
+    }}>
+      {items.map(it => it.fab ? (
+        <div key="fab" onClick={() => onNavigate('sheet')} style={{
+          width: 68, height: 68, borderRadius: '50%', background: P.red, color: P.bg,
+          display: 'grid', placeItems: 'center', marginTop: -42,
+          boxShadow: `4px 4px 0 ${P.ink}`, border: `2.5px solid ${P.ink}`, cursor: 'pointer',
+        }}>
+          <Icon name="plus" size={30} width={3} />
+        </div>
+      ) : (
+        <div key={it.key} onClick={() => onNavigate(it.key)} style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+          color: P.ink, opacity: active === it.key ? 1 : 0.65, cursor: 'pointer', userSelect: 'none',
+        }}>
+          <Icon name={it.icon} size={22} width={active === it.key ? 2.4 : 2} />
+          <span style={{ font: mono(9, active === it.key ? 700 : 500), letterSpacing: 1.2, textTransform: 'uppercase' }}>{it.label}</span>
+          {active === it.key && <span style={{ width: 34, height: 5, background: P.red, borderRadius: 2, marginTop: 2 }} />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Recipe card ────────────────────────────────────────────────────────────
+function RecipeCard({ r, onClick }) {
+  return (
+    <div onClick={onClick} style={{
+      display: 'grid', gridTemplateColumns: '1fr 92px', gap: 12, padding: 10,
+      background: P.bg, border: `2px solid ${P.ink}`, borderRadius: 12,
+      boxShadow: `3px 3px 0 ${P.ink}`, alignItems: 'stretch', cursor: 'pointer',
+      WebkitTapHighlightColor: 'transparent',
+    }}>
+      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minWidth: 0 }}>
+        <div>
+          <div style={{ font: disp(18), letterSpacing: -0.5, color: P.ink, marginBottom: 4 }}>{r.title}</div>
+          <div style={{ font: mono(10), color: P.ink, opacity: 0.6, letterSpacing: 0.6 }}>by {r.author} · {r.time}</div>
+        </div>
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 6 }}>
+          {r.tags.map((t, i) => <Sticker key={t} bg={i % 2 ? P.yellow : P.red} color={P.ink} rotate={i % 2 ? 2 : -3} size={9}>{t}</Sticker>)}
+          <Sticker bg={P.ink} color={P.bg} rotate={0} size={9}>×{r.cooks} cooks</Sticker>
+        </div>
+      </div>
+      <div style={{ borderRadius: 8, overflow: 'hidden', border: `1.5px solid ${P.ink}` }}>
+        {r.photo === false ? (
+          <div style={{
+            width: '100%', height: '100%', background: r.color, color: r.accent,
+            display: 'grid', placeItems: 'center', font: disp(32), letterSpacing: -1.5, textTransform: 'lowercase',
+            backgroundImage: 'repeating-linear-gradient(135deg,transparent 0 18px,rgba(0,0,0,0.06) 18px 19px)',
+          }}>
+            {r.title.replace(/[^a-zA-Z]/g, '').slice(0, 2).toLowerCase()}
+          </div>
+        ) : (
+          <FoodPlaceholder color={r.color} accent={r.accent} label={r.id} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Phone shell ────────────────────────────────────────────────────────────
+function Phone({ children }) {
+  const grain = [
+    'radial-gradient(circle at 14% 12%,rgba(0,0,0,0.04) 0.6px,transparent 1px)',
+    'radial-gradient(circle at 73% 38%,rgba(0,0,0,0.04) 0.6px,transparent 1px)',
+    'radial-gradient(circle at 31% 81%,rgba(0,0,0,0.04) 0.6px,transparent 1px)',
+    'radial-gradient(circle at 89% 67%,rgba(0,0,0,0.04) 0.6px,transparent 1px)',
+  ].join(',');
+
+  return (
+    <div style={{
+      width: 390, height: 844, background: P.bg, color: P.ink,
+      backgroundImage: grain,
+      backgroundSize: '120px 120px,90px 90px,140px 140px,70px 70px',
+      position: 'relative', overflow: 'hidden',
+      fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
+      borderRadius: 44, boxShadow: '0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06)',
+      flexShrink: 0,
+    }}>
+      {/* Status bar */}
+      <div style={{
+        height: 44, padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        font: body(14, 600), pointerEvents: 'none',
+      }}>
+        <span>9:41</span>
+        <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end' }}>
+            {[3, 5, 7, 9].map(h => <span key={h} style={{ width: 3, height: h, background: 'currentColor', borderRadius: 1 }} />)}
+          </div>
+          <div style={{ width: 22, height: 11, border: '1.2px solid currentColor', borderRadius: 3, padding: 1.5 }}>
+            <div style={{ width: '70%', height: '100%', background: 'currentColor', borderRadius: 1 }} />
+          </div>
+        </div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ╭─────────────────────────────────────────────────────────────────────────╮
+// │  Screen: Home                                                           │
+// ╰─────────────────────────────────────────────────────────────────────────╯
+function HomeScreen({ onNavigate }) {
+  return (
+    <>
+      {/* Header */}
+      <div style={{ padding: '8px 20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Wordmark />
+        <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ width: 32, height: 32, borderRadius: '50%', border: `1.8px solid ${P.ink}`, display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
+            <Icon name="bookmark" size={16} />
+          </div>
+          <Avatar name="will" size={32} />
+        </div>
+      </div>
+
+      {/* Headline */}
+      <div style={{ padding: '14px 20px 0' }}>
+        <div style={{ font: `800 36px/0.88 'Bricolage Grotesque', sans-serif`, color: P.ink, letterSpacing: -1.4 }}>
+          what's{' '}
+          <span style={{ position: 'relative', display: 'inline-block' }}>
+            cooking
+            <span style={{ position: 'absolute', left: 0, right: 0, bottom: -4, height: 8, background: P.yellow, zIndex: -1, transform: 'rotate(-1deg)' }} />
+          </span>?
+        </div>
+      </div>
+
+      {/* Search */}
+      <div style={{ padding: '14px 20px 0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 14px', background: P.bg, border: `2px solid ${P.ink}`, borderRadius: 999, boxShadow: `3px 3px 0 ${P.ink}`, cursor: 'text' }}>
+          <Icon name="search" size={17} width={2.2} />
+          <span style={{ font: body(14), color: P.ink, opacity: 0.5 }}>noodles, layla, under 30 min…</span>
+        </div>
+      </div>
+
+      {/* Filter chips */}
+      <div style={{ padding: '12px 20px 0', display: 'flex', gap: 7, overflow: 'hidden' }}>
+        {['all','tags','who','time','pantry'].map((label, i) => (
+          <div key={label} style={{
+            padding: '5px 12px', borderRadius: 999, border: `1.6px solid ${P.ink}`,
+            background: i === 0 ? P.ink : 'transparent', color: i === 0 ? P.bg : P.ink,
+            font: body(12, 600), cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap',
+          }}>{label}</div>
+        ))}
+      </div>
+
+      {/* Feed */}
+      <div style={{ padding: '14px 20px 110px', display: 'flex', flexDirection: 'column', gap: 11, overflowY: 'auto', height: 'calc(100% - 206px)' }}>
+        {RECIPES.map(r => <RecipeCard key={r.id} r={r} onClick={() => onNavigate('cooking')} />)}
+      </div>
+
+      <TabBar active="home" onNavigate={onNavigate} />
+    </>
+  );
+}
+
+// ╭─────────────────────────────────────────────────────────────────────────╮
+// │  Screen: Add sheet (overlay)                                            │
+// ╰─────────────────────────────────────────────────────────────────────────╯
+function SheetOverlay({ onNavigate }) {
+  const opts = [
+    { icon: 'pen',    title: 'type it out',   sub: 'manual entry',                    bg: P.yellow, color: P.ink, rot: -2, to: 'manual' },
+    { icon: 'link',   title: 'paste a link',  sub: 'we pull it from the web',         bg: P.bg,     color: P.ink, rot:  1, to: 'home'   },
+    { icon: 'camera', title: 'snap a recipe', sub: 'cookbook page, card, screenshot', bg: P.red,    color: P.bg,  rot: -1, to: 'scan'   },
+  ];
+  return (
+    <>
+      {/* dim */}
+      <div onClick={() => onNavigate('home')} style={{ position: 'absolute', inset: 0, background: 'rgba(47,42,42,0.45)', backdropFilter: 'blur(2px)', zIndex: 10 }} />
+      {/* sheet */}
+      <div style={{
+        position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 11,
+        background: P.bg, borderTop: `2.5px solid ${P.ink}`, borderTopLeftRadius: 22, borderTopRightRadius: 22,
+        padding: '12px 18px 28px',
+      }}>
+        <div style={{ width: 38, height: 4, background: P.ink, borderRadius: 4, margin: '4px auto 14px', opacity: 0.7 }} />
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div style={{ font: disp(22), letterSpacing: -0.6 }}>
+            <span style={{ position: 'relative', display: 'inline-block' }}>
+              add
+              <span style={{ position: 'absolute', left: -2, right: -2, bottom: -3, height: 7, background: P.red, zIndex: -1, transform: 'rotate(-1deg)' }} />
+            </span>{' '}a recipe
+          </div>
+          <div onClick={() => onNavigate('home')} style={{ width: 26, height: 26, border: `1.8px solid ${P.ink}`, borderRadius: '50%', display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
+            <Icon name="close" size={14} />
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {opts.map(o => (
+            <div key={o.title} onClick={() => onNavigate(o.to)} style={{
+              display: 'grid', gridTemplateColumns: '52px 1fr 22px', alignItems: 'center', gap: 12,
+              padding: '14px 14px', background: o.bg, color: o.color,
+              border: `2px solid ${P.ink}`, borderRadius: 14, boxShadow: `4px 4px 0 ${P.ink}`,
+              transform: `rotate(${o.rot * 0.3}deg)`, cursor: 'pointer', userSelect: 'none',
+            }}>
+              <div style={{ width: 46, height: 46, borderRadius: 10, background: P.ink, color: P.bg, display: 'grid', placeItems: 'center', transform: `rotate(${-o.rot}deg)` }}>
+                <Icon name={o.icon} size={22} width={2.2} />
+              </div>
+              <div>
+                <div style={{ font: disp(19), letterSpacing: -0.4 }}>{o.title}</div>
+                <div style={{ font: mono(10), opacity: 0.7, marginTop: 3, letterSpacing: 0.4 }}>{o.sub}</div>
+              </div>
+              <Icon name="arrow" size={20} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ╭─────────────────────────────────────────────────────────────────────────╮
+// │  Screen: Add manual                                                     │
+// ╰─────────────────────────────────────────────────────────────────────────╯
+function ManualScreen({ onNavigate }) {
+  return (
+    <>
+      <div style={{ padding: '4px 18px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div onClick={() => onNavigate('home')} style={{ width: 32, height: 32, borderRadius: '50%', border: `1.8px solid ${P.ink}`, display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
+          <Icon name="close" size={16} />
+        </div>
+        <Eyebrow>new · manual</Eyebrow>
+        <div style={{ padding: '6px 14px', background: P.ink, color: P.bg, borderRadius: 999, font: body(12, 700), cursor: 'pointer' }}>save</div>
+      </div>
+
+      <div style={{ padding: '12px 18px 24px', overflowY: 'auto', height: 'calc(100% - 56px)' }}>
+        {/* Cover photo slot */}
+        <div style={{
+          height: 130, borderRadius: 14, border: `2px dashed ${P.ink}`, background: P.paper,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
+        }}>
+          <div style={{ width: 40, height: 40, background: P.yellow, borderRadius: '50%', border: `1.8px solid ${P.ink}`, display: 'grid', placeItems: 'center', transform: 'rotate(-2deg)' }}>
+            <Icon name="camera" size={20} />
+          </div>
+          <div style={{ font: mono(10), letterSpacing: 0.8, textTransform: 'uppercase', opacity: 0.7 }}>tap for cover photo</div>
+        </div>
+
+        {/* Title */}
+        <div style={{ marginTop: 16 }}>
+          <Eyebrow>title</Eyebrow>
+          <div style={{ font: disp(28), letterSpacing: -0.9, marginTop: 6, color: P.ink, borderBottom: `2.5px solid ${P.ink}`, paddingBottom: 6 }}>
+            grandma's lemon dal
+            <span style={{ display: 'inline-block', width: 2, height: 24, background: P.red, marginLeft: 3, transform: 'translateY(3px)', verticalAlign: 'text-bottom' }} />
+          </div>
+        </div>
+
+        {/* Meta */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 14 }}>
+          {[['prep','10m'],['cook','25m'],['serves','4']].map(([k, v]) => (
+            <div key={k} style={{ border: `1.8px solid ${P.ink}`, borderRadius: 10, padding: '6px 10px', background: P.bg }}>
+              <div style={{ font: mono(9), opacity: 0.6, textTransform: 'uppercase', letterSpacing: 1 }}>{k}</div>
+              <div style={{ font: disp(18), marginTop: 2 }}>{v}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Tags */}
+        <div style={{ marginTop: 14 }}>
+          <Eyebrow>tags</Eyebrow>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 7 }}>
+            <Sticker bg={P.red} color={P.bg} rotate={-3}>weeknight</Sticker>
+            <Sticker bg={P.yellow} color={P.ink} rotate={2}>indian</Sticker>
+            <Sticker bg={P.ink} color={P.bg} rotate={-1}>vegan</Sticker>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 9px 5px', border: `1.5px dashed ${P.ink}`, borderRadius: 999, font: body(10, 600), opacity: 0.7, cursor: 'pointer' }}>
+              <Icon name="plus" size={11} width={2.5} /> add tag
+            </span>
+          </div>
+        </div>
+
+        {/* Ingredients */}
+        <div style={{ marginTop: 18 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <div style={{ font: disp(18), letterSpacing: -0.3 }}>ingredients</div>
+            <Eyebrow>4 items</Eyebrow>
+          </div>
+          <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {[['1 cup','red lentils, rinsed'],['3 cups','water'],['1','lemon, zest + juice'],['2 tbsp','ghee']].map(([q, n]) => (
+              <div key={n} style={{ display: 'grid', gridTemplateColumns: '92px 1fr', gap: 10, padding: '8px 0', borderBottom: `1px solid ${P.ink}22`, alignItems: 'baseline' }}>
+                <span style={{ font: `800 17px/1 'Bricolage Grotesque', sans-serif`, color: P.red, letterSpacing: -0.4 }}>{q}</span>
+                <span style={{ font: body(15) }}>{n}</span>
+              </div>
+            ))}
+            <div style={{ marginTop: 8, font: mono(10), color: P.ink, opacity: 0.6, cursor: 'pointer' }}>+ add ingredient</div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ╭─────────────────────────────────────────────────────────────────────────╮
+// │  Screen: Scan                                                           │
+// ╰─────────────────────────────────────────────────────────────────────────╯
+function ScanScreen({ onNavigate }) {
+  const corners = ['tl','tr','bl','br'];
+  const cornerStyles = {
+    tl: { top: 14, left: 14, borderTop: `3px solid ${P.yellow}`, borderLeft: `3px solid ${P.yellow}` },
+    tr: { top: 14, right: 14, borderTop: `3px solid ${P.yellow}`, borderRight: `3px solid ${P.yellow}` },
+    bl: { bottom: 14, left: 14, borderBottom: `3px solid ${P.yellow}`, borderLeft: `3px solid ${P.yellow}` },
+    br: { bottom: 14, right: 14, borderBottom: `3px solid ${P.yellow}`, borderRight: `3px solid ${P.yellow}` },
+  };
+  return (
+    <div style={{ position: 'absolute', inset: 0, background: P.ink, color: P.bg, display: 'flex', flexDirection: 'column' }}>
+      {/* Header */}
+      <div style={{ padding: '50px 18px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div onClick={() => onNavigate('sheet')} style={{ width: 32, height: 32, borderRadius: '50%', border: `1.8px solid ${P.bg}`, display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
+          <Icon name="close" size={16} stroke={P.bg} />
+        </div>
+        <div style={{ font: disp(17) }}>snap it</div>
+        <div style={{ width: 32, height: 32, borderRadius: '50%', border: `1.8px solid ${P.bg}`, display: 'grid', placeItems: 'center' }}>
+          <Icon name="flash" size={16} stroke={P.bg} />
+        </div>
+      </div>
+
+      {/* Viewfinder */}
+      <div style={{ flex: 1, position: 'relative', margin: '14px 18px', borderRadius: 18, overflow: 'hidden', border: `2px solid ${P.bg}` }}>
+        <FoodPlaceholder color="#8E4A1E" accent={P.bg} label="viewfinder · cookbook page" />
+        {corners.map(c => <div key={c} style={{ position: 'absolute', width: 26, height: 26, ...cornerStyles[c] }} />)}
+        <div style={{ position: 'absolute', top: 22, left: '50%', transform: 'translateX(-50%)', whiteSpace: 'nowrap' }}>
+          <Sticker bg={P.yellow} color={P.ink} rotate={-2} size={11}>
+            <Icon name="sparkle" size={10} width={2.5} />&nbsp;recipe spotted
+          </Sticker>
+        </div>
+        <div style={{ position: 'absolute', left: 22, bottom: 22, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {['title · "miso glazed eggplant"','ingredients · 7 found','method · 4 steps'].map(t => (
+            <div key={t} style={{ font: mono(11, 500), color: P.bg, padding: '4px 8px', background: 'rgba(0,0,0,0.55)', borderRadius: 4, width: 'fit-content' }}>
+              <span style={{ color: P.yellow }}>✓</span> {t}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Recent scans */}
+      <div style={{ padding: '0 18px 10px' }}>
+        <div style={{ font: mono(10), color: P.bg, opacity: 0.6, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 7 }}>recent scans</div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {['#E89B5A','#C2562E','#6B7A3E','#D94F4F'].map((c, i) => (
+            <div key={i} style={{ width: 50, height: 50, borderRadius: 8, overflow: 'hidden', border: `1.5px solid ${P.bg}` }}>
+              <FoodPlaceholder color={c} accent={P.bg} stripes={false} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Shutter */}
+      <div style={{ padding: '14px 18px 44px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ width: 44, height: 44, borderRadius: 10, background: 'rgba(255,255,255,0.08)', display: 'grid', placeItems: 'center' }}>
+          <Icon name="gallery" size={20} stroke={P.bg} />
+        </div>
+        <div style={{ width: 72, height: 72, borderRadius: '50%', background: P.red, border: `4px solid ${P.bg}`, boxShadow: `0 0 0 4px ${P.red}`, display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
+          <div style={{ width: 50, height: 50, borderRadius: '50%', background: P.bg }} />
+        </div>
+        <div style={{ width: 44, height: 44, borderRadius: 10, background: 'rgba(255,255,255,0.08)', display: 'grid', placeItems: 'center' }}>
+          <Icon name="flip" size={20} stroke={P.bg} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ╭─────────────────────────────────────────────────────────────────────────╮
+// │  Screen: Cooking (step-by-step)                                         │
+// ╰─────────────────────────────────────────────────────────────────────────╯
+function CookingScreen({ onNavigate }) {
+  const [stepIdx, setStepIdx] = useState(0);
+  const [serves, setServes] = useState(DETAIL.servings);
+  const total = DETAIL.steps.length;
+  const step = DETAIL.steps[stepIdx];
+  const stepLabel = stepIdx + 1 === total ? 'last one!' : stepIdx < Math.floor(total / 2) ? 'getting started' : 'halfway there';
+
+  return (
+    <>
+      {/* Header */}
+      <div style={{ padding: '4px 18px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div onClick={() => onNavigate('home')} style={{ width: 32, height: 32, borderRadius: '50%', border: `1.8px solid ${P.ink}`, display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
+          <Icon name="back" size={16} />
+        </div>
+        <Eyebrow>screen-awake · on</Eyebrow>
+        <div style={{ width: 32, height: 32, borderRadius: '50%', background: P.yellow, border: `1.8px solid ${P.ink}`, display: 'grid', placeItems: 'center' }}>
+          <Icon name="bookmark" size={15} />
+        </div>
+      </div>
+
+      {/* Hero */}
+      <div style={{ margin: '10px 18px 0', height: 110, borderRadius: 14, overflow: 'hidden', border: `2px solid ${P.ink}`, position: 'relative' }}>
+        <FoodPlaceholder color="#E8C36E" accent={P.ink} label="cacio_e_pepe.jpg" />
+        <div style={{ position: 'absolute', top: 8, left: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Avatar name="maya" size={26} />
+          <Sticker bg={P.red} color={P.bg} rotate={-3}>by maya</Sticker>
+        </div>
+        <div style={{ position: 'absolute', bottom: 8, right: 10, display: 'flex', gap: 5 }}>
+          <Sticker bg={P.ink} color={P.bg} rotate={2} size={9}>{DETAIL.time}</Sticker>
+          <Sticker bg={P.yellow} color={P.ink} rotate={-1} size={9}>{DETAIL.cooks} cooks</Sticker>
+        </div>
+      </div>
+
+      {/* Title */}
+      <div style={{ padding: '10px 18px 0' }}>
+        <div style={{ font: `800 30px/0.9 'Bricolage Grotesque', sans-serif`, letterSpacing: -1, color: P.ink }}>
+          {DETAIL.title.toLowerCase()}
+        </div>
+      </div>
+
+      {/* Servings scaler */}
+      <div style={{ padding: '12px 18px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, border: `1.8px solid ${P.ink}`, borderRadius: 999, padding: '4px 4px 4px 12px' }}>
+          <Eyebrow style={{ opacity: 0.9 }}>serves</Eyebrow>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div onClick={() => setServes(s => Math.max(1, s - 1))} style={{ width: 26, height: 26, borderRadius: '50%', border: `1.5px solid ${P.ink}`, display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
+              <Icon name="minus" size={12} width={2.5} />
+            </div>
+            <span style={{ font: disp(16), minWidth: 14, textAlign: 'center' }}>{serves}</span>
+            <div onClick={() => setServes(s => s + 1)} style={{ width: 26, height: 26, borderRadius: '50%', background: P.red, color: P.bg, display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
+              <Icon name="plus" size={12} width={2.5} />
+            </div>
+          </div>
+        </div>
+        <div style={{ font: mono(10), opacity: 0.6 }}>
+          {serves === DETAIL.servings ? 'as written' : `×${(serves / DETAIL.servings).toFixed(1)} from original`}
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ padding: '14px 18px 0', display: 'flex', gap: 18, borderBottom: `1.5px solid ${P.ink}22` }}>
+        <div style={{ paddingBottom: 8, font: body(14, 700), opacity: 0.5, cursor: 'pointer' }}>ingredients</div>
+        <div style={{ paddingBottom: 8, font: body(14, 800), color: P.ink, borderBottom: `3px solid ${P.red}`, marginBottom: -1.5 }}>steps</div>
+        <div style={{ marginLeft: 'auto', font: mono(10), opacity: 0.6, alignSelf: 'center' }}>step-by-step · on</div>
+      </div>
+
+      {/* Step card */}
+      <div style={{ padding: '14px 18px 0' }}>
+        <div style={{ background: P.paper, border: `2px solid ${P.ink}`, borderRadius: 16, padding: '16px 16px 18px', boxShadow: `4px 4px 0 ${P.ink}` }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+            <div style={{ font: disp(14), color: P.red, letterSpacing: 0.4, textTransform: 'uppercase' }}>
+              step {String(stepIdx + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}
+            </div>
+            <div style={{ font: mono(10), opacity: 0.6 }}>{stepLabel}</div>
+          </div>
+          <div style={{ font: body(20, 700), lineHeight: 1.2, marginTop: 8, color: P.ink }}>{step.text}</div>
+          {step.timer > 0 && (
+            <div style={{ marginTop: 14, display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px', background: P.ink, color: P.bg, borderRadius: 999, cursor: 'pointer' }}>
+              <Icon name="play" size={11} />
+              <span style={{ font: disp(14), fontVariantNumeric: 'tabular-nums' }}>
+                {String(Math.floor(step.timer / 60)).padStart(2, '0')}:{String(step.timer % 60).padStart(2, '0')}
+              </span>
+              <span style={{ font: mono(9), opacity: 0.7, letterSpacing: 0.5, textTransform: 'uppercase' }}>tap to start</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Step nav */}
+      <div style={{
+        position: 'absolute', left: 0, right: 0, bottom: 0, padding: '14px 18px 28px',
+        background: P.bg, borderTop: `2px solid ${P.ink}`,
+        display: 'grid', gridTemplateColumns: '52px 1fr 52px', gap: 10, alignItems: 'center',
+      }}>
+        <div onClick={() => setStepIdx(i => Math.max(0, i - 1))} style={{ height: 52, borderRadius: 14, border: `2px solid ${P.ink}`, display: 'grid', placeItems: 'center', cursor: 'pointer', opacity: stepIdx === 0 ? 0.3 : 1 }}>
+          <Icon name="back" size={20} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 5 }}>
+            {DETAIL.steps.map((_, i) => (
+              <span key={i} onClick={() => setStepIdx(i)} style={{
+                width: i === stepIdx ? 22 : 8, height: 8, borderRadius: 4, cursor: 'pointer',
+                background: i <= stepIdx ? P.red : `${P.ink}33`,
+                transition: 'width 0.2s ease',
+              }} />
+            ))}
+          </div>
+          <div style={{ font: mono(9), opacity: 0.6, letterSpacing: 0.8 }}>{stepIdx + 1} of {total}</div>
+        </div>
+        <div onClick={() => stepIdx < total - 1 ? setStepIdx(i => i + 1) : onNavigate('home')} style={{ height: 52, borderRadius: 14, background: P.ink, color: P.bg, display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
+          {stepIdx < total - 1 ? <Icon name="arrow" size={20} stroke={P.bg} /> : <Icon name="check" size={20} stroke={P.bg} />}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ╭─────────────────────────────────────────────────────────────────────────╮
+// │  App root                                                               │
+// ╰─────────────────────────────────────────────────────────────────────────╯
+function App() {
+  const [screen, setScreen] = useState('home');
+
+  return (
+    <div style={{
+      width: '100vw', height: '100vh', background: '#1a1815',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <Phone>
+        {(screen === 'home' || screen === 'sheet') && <HomeScreen onNavigate={setScreen} />}
+        {screen === 'sheet'   && <SheetOverlay  onNavigate={setScreen} />}
+        {screen === 'manual'  && <ManualScreen  onNavigate={setScreen} />}
+        {screen === 'scan'    && <ScanScreen    onNavigate={setScreen} />}
+        {screen === 'cooking' && <CookingScreen onNavigate={setScreen} />}
+      </Phone>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
