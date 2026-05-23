@@ -897,7 +897,7 @@ function CookingScreen({ recipe, user, onNavigate, onDeleted, onEdit }) {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
           <div style={{ display: 'flex', gap: 5 }}>
-            {SAMPLE_DETAIL.steps.map((_, i) => <span key={i} onClick={() => setStepIdx(i)} style={{ width: i === stepIdx ? 22 : 8, height: 8, borderRadius: 4, cursor: 'pointer', background: i <= stepIdx ? P.red : `${P.ink}33`, transition: 'width 0.2s ease' }} />)}
+            {steps.map((_, i) => <span key={i} onClick={() => setStepIdx(i)} style={{ width: i === stepIdx ? 22 : 8, height: 8, borderRadius: 4, cursor: 'pointer', background: i <= stepIdx ? P.red : `${P.ink}33`, transition: 'width 0.2s ease' }} />)}
           </div>
           <div style={{ font: mono(9), opacity: 0.6, letterSpacing: 0.8 }}>{stepIdx + 1} of {total}</div>
         </div>
@@ -906,6 +906,282 @@ function CookingScreen({ recipe, user, onNavigate, onDeleted, onEdit }) {
         </div>
       </div>
     </>
+  );
+}
+
+// ── Window width ───────────────────────────────────────────────────────────
+function useWindowWidth() {
+  const [w, setW] = useState(window.innerWidth);
+  useEffect(() => {
+    const h = () => setW(window.innerWidth);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+  return w;
+}
+
+// ╭─────────────────────────────────────────────────────────────────────────╮
+// │  Desktop recipe detail panel                                            │
+// ╰─────────────────────────────────────────────────────────────────────────╯
+function DesktopRecipeDetail({ recipe, user, onClose, onDeleted, onEdit }) {
+  const [detail, setDetail]         = useState(null);
+  const [serves, setServes]         = useState(2);
+  const [activeTab, setActiveTab]   = useState('steps');
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [deleting, setDeleting]     = useState(false);
+
+  const isOwner = CONFIGURED && user?.id && recipe?.author_id && user.id === recipe.author_id;
+
+  useEffect(() => {
+    setConfirmDel(false); setActiveTab('steps');
+    if (!CONFIGURED || !recipe) {
+      setDetail({ ...SAMPLE_DETAIL, title: recipe?.title || SAMPLE_DETAIL.title, author: recipe?.author || SAMPLE_DETAIL.author });
+      setServes(recipe?.servings || SAMPLE_DETAIL.servings);
+      return;
+    }
+    setDetail(null);
+    (async () => {
+      const [{ data: ings }, { data: stps }] = await Promise.all([
+        sb.from('ingredients').select('*').eq('recipe_id', recipe.id).order('sort_order'),
+        sb.from('steps').select('*').eq('recipe_id', recipe.id).order('sort_order'),
+      ]);
+      setDetail({ title: recipe.title, author: recipe.author, time: recipe.time, cooks: recipe.cooks, servings: recipe.servings || 2, ingredients: ings || [], steps: (stps || []).map(s => ({ text: s.text, timer: s.timer_seconds || 0 })) });
+      setServes(recipe.servings || 2);
+    })();
+  }, [recipe?.id]);
+
+  async function handleDelete() {
+    if (!confirmDel) { setConfirmDel(true); return; }
+    setDeleting(true);
+    try { await sb.from('recipes').delete().eq('id', recipe.id); onDeleted?.(); }
+    catch { setDeleting(false); setConfirmDel(false); }
+  }
+
+  const origServings = detail?.servings || 2;
+  const steps        = detail?.steps || [];
+  const ingredients  = detail?.ingredients || [];
+
+  return (
+    <>
+      <div style={{ padding: '16px 18px', borderBottom: `2px solid ${P.ink}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {isOwner && (
+            <div onClick={() => onEdit(recipe)} style={{ width: 32, height: 32, borderRadius: '50%', background: P.yellow, border: `1.8px solid ${P.ink}`, display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
+              <Icon name="pen" size={14} />
+            </div>
+          )}
+          <div style={{ width: 32, height: 32, borderRadius: '50%', background: P.yellow, border: `1.8px solid ${P.ink}`, display: 'grid', placeItems: 'center' }}>
+            <Icon name="bookmark" size={15} />
+          </div>
+        </div>
+        <div onClick={onClose} style={{ width: 32, height: 32, borderRadius: '50%', border: `1.8px solid ${P.ink}`, display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
+          <Icon name="close" size={16} />
+        </div>
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto' }}>
+        <div style={{ height: 160, position: 'relative' }}>
+          <FoodPlaceholder color={recipe.color || '#E8C36E'} accent={recipe.accent || P.ink} label={typeof recipe.id === 'string' && recipe.id.length < 20 ? recipe.id : null} />
+          <div style={{ position: 'absolute', top: 10, left: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Avatar name={recipe.author || 'chef'} size={26} />
+            <Sticker bg={P.red} color={P.bg} rotate={-2} size={10}>by {recipe.author}</Sticker>
+          </div>
+          <div style={{ position: 'absolute', bottom: 10, right: 12, display: 'flex', gap: 5 }}>
+            <Sticker bg={P.ink} color={P.bg} rotate={1} size={9}>{recipe.time}</Sticker>
+            <Sticker bg={P.yellow} color={P.ink} rotate={-2} size={9}>{recipe.cooks} cooks</Sticker>
+          </div>
+        </div>
+
+        <div style={{ padding: '14px 18px 24px' }}>
+          <div style={{ font: `800 26px/0.92 'Bricolage Grotesque', sans-serif`, letterSpacing: -0.8, color: P.ink }}>{recipe.title?.toLowerCase()}</div>
+
+          {recipe.tags?.length > 0 && (
+            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 10 }}>
+              {recipe.tags.map((t, i) => <Sticker key={t} bg={i % 2 ? P.yellow : P.red} color={P.ink} rotate={i % 2 ? 2 : -3} size={9}>{t}</Sticker>)}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, border: `1.8px solid ${P.ink}`, borderRadius: 999, padding: '4px 4px 4px 12px' }}>
+              <Eyebrow style={{ opacity: 0.9 }}>serves</Eyebrow>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div onClick={() => setServes(s => Math.max(1, s - 1))} style={{ width: 26, height: 26, borderRadius: '50%', border: `1.5px solid ${P.ink}`, display: 'grid', placeItems: 'center', cursor: 'pointer' }}><Icon name="minus" size={12} width={2.5} /></div>
+                <span style={{ font: disp(16), minWidth: 14, textAlign: 'center' }}>{serves}</span>
+                <div onClick={() => setServes(s => s + 1)} style={{ width: 26, height: 26, borderRadius: '50%', background: P.red, color: P.bg, display: 'grid', placeItems: 'center', cursor: 'pointer' }}><Icon name="plus" size={12} width={2.5} /></div>
+              </div>
+            </div>
+            <div style={{ font: mono(10), opacity: 0.6 }}>{serves === origServings ? 'as written' : `×${(serves / origServings).toFixed(1)}`}</div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 18, marginTop: 16, borderBottom: `1.5px solid ${P.ink}22` }}>
+            {['ingredients','steps'].map(tab => (
+              <div key={tab} onClick={() => setActiveTab(tab)} style={{ paddingBottom: 8, font: body(14, activeTab === tab ? 800 : 600), color: P.ink, opacity: activeTab === tab ? 1 : 0.45, borderBottom: activeTab === tab ? `3px solid ${P.red}` : '3px solid transparent', marginBottom: -1.5, cursor: 'pointer' }}>{tab}</div>
+            ))}
+          </div>
+
+          {!detail ? (
+            <div style={{ paddingTop: 20, textAlign: 'center', font: mono(11), opacity: 0.45, letterSpacing: 1.5, textTransform: 'uppercase' }}>loading…</div>
+          ) : activeTab === 'ingredients' ? (
+            <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column' }}>
+              {ingredients.length === 0
+                ? <div style={{ font: body(14), opacity: 0.4, marginTop: 8 }}>no ingredients listed</div>
+                : ingredients.map((ing, i) => (
+                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8, padding: '8px 0', borderBottom: `1px solid ${P.ink}22` }}>
+                    <span style={{ font: `700 15px/1.2 'Bricolage Grotesque', sans-serif`, color: P.red }}>{ing.qty}</span>
+                    <span style={{ font: body(14) }}>{ing.item}</span>
+                  </div>
+                ))
+              }
+            </div>
+          ) : (
+            <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {steps.length === 0
+                ? <div style={{ font: body(14), opacity: 0.4, marginTop: 8 }}>no steps yet</div>
+                : steps.map((step, i) => (
+                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '24px 1fr', gap: 10, alignItems: 'start', padding: '12px 14px', background: P.bg, border: `1.5px solid ${P.ink}22`, borderRadius: 12 }}>
+                    <span style={{ font: `800 13px/1.5 'Bricolage Grotesque', sans-serif`, color: P.red }}>{i + 1}.</span>
+                    <span style={{ font: body(14), lineHeight: 1.5 }}>{step.text}</span>
+                  </div>
+                ))
+              }
+            </div>
+          )}
+
+          {isOwner && (
+            <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
+              <div onClick={!deleting ? handleDelete : undefined} style={{ font: mono(10), color: confirmDel ? P.bg : P.ink, opacity: confirmDel ? 1 : 0.4, cursor: 'pointer', letterSpacing: 0.5, padding: '6px 12px', borderRadius: 999, background: confirmDel ? P.red : 'transparent', border: `1.5px solid ${confirmDel ? P.red : 'transparent'}`, transition: 'all 0.15s' }}>
+                {deleting ? 'deleting…' : confirmDel ? 'tap again to confirm' : 'delete recipe'}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ╭─────────────────────────────────────────────────────────────────────────╮
+// │  Desktop layout                                                         │
+// ╰─────────────────────────────────────────────────────────────────────────╯
+function DesktopLayout({ user, recipes, loading, reload }) {
+  const [screen, setScreen]                 = useState('home');
+  const [selectedRecipe, setSelectedRecipe] = useState(null);
+  const [editRecipe, setEditRecipe]         = useState(null);
+  const username = user?.user_metadata?.username || user?.email?.split('@')[0] || 'you';
+
+  function navigate(s)    { setScreen(s); if (s === 'home') setEditRecipe(null); }
+  function openEdit(r)    { setEditRecipe(r); setScreen('manual'); }
+  function afterSaved()   { reload(); setScreen('home'); setEditRecipe(null); }
+  function afterDeleted() { setSelectedRecipe(null); reload(); }
+
+  const sideNav = [
+    { key: 'home',    icon: 'home',     label: 'feed'    },
+    { key: 'saved',   icon: 'bookmark', label: 'saved'   },
+    { key: 'search',  icon: 'search',   label: 'search'  },
+    { key: 'profile', icon: 'user',     label: 'profile' },
+  ];
+
+  const sheetOpts = [
+    { icon: 'pen',    title: 'type it out',   sub: 'manual entry',                    bg: P.yellow, color: P.ink, to: 'manual' },
+    { icon: 'link',   title: 'paste a link',  sub: 'we pull it from the web',         bg: P.bg,     color: P.ink, to: 'link'   },
+    { icon: 'camera', title: 'snap a recipe', sub: 'cookbook page, card, screenshot', bg: P.red,    color: P.bg,  to: 'scan'   },
+  ];
+
+  const showDetail = !!selectedRecipe && screen === 'home';
+
+  return (
+    <div style={{ display: 'flex', width: '100vw', height: '100vh', background: '#1a1815', overflow: 'hidden' }}>
+
+      {/* Sidebar */}
+      <div style={{ width: 240, background: P.bg, borderRight: `2px solid ${P.ink}`, display: 'flex', flexDirection: 'column', padding: '32px 18px 28px', flexShrink: 0 }}>
+        <Wordmark size={22} />
+        <nav style={{ marginTop: 32, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {sideNav.map(item => (
+            <div key={item.key} onClick={() => navigate(item.key)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 12, background: screen === item.key ? P.ink : 'transparent', color: screen === item.key ? P.bg : P.ink, cursor: 'pointer', userSelect: 'none', font: body(14, screen === item.key ? 700 : 500), transition: 'background 0.1s' }}>
+              <Icon name={item.icon} size={18} stroke="currentColor" />
+              {item.label}
+            </div>
+          ))}
+        </nav>
+        <div style={{ marginTop: 16 }}>
+          <div onClick={() => navigate('sheet')} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', background: P.red, color: P.bg, borderRadius: 14, border: `2px solid ${P.ink}`, boxShadow: `3px 3px 0 ${P.ink}`, cursor: 'pointer', userSelect: 'none', font: disp(15) }}>
+            <Icon name="plus" size={18} stroke={P.bg} width={2.5} />
+            add a recipe
+          </div>
+        </div>
+        <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: 10, paddingTop: 16, borderTop: `1.5px solid ${P.ink}22` }}>
+          <Avatar name={username} size={34} />
+          <div>
+            <div style={{ font: body(13, 700), color: P.ink }}>{username}</div>
+            {CONFIGURED && <div onClick={() => sb.auth.signOut()} style={{ font: mono(10), color: P.ink, opacity: 0.45, cursor: 'pointer', letterSpacing: 0.3, marginTop: 2 }}>sign out</div>}
+          </div>
+        </div>
+      </div>
+
+      {/* Main area */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: P.bg }}>
+
+        {screen === 'home' && <>
+          <div style={{ padding: '28px 32px 0', flexShrink: 0 }}>
+            <div style={{ font: `800 40px/0.9 'Bricolage Grotesque', sans-serif`, letterSpacing: -1.6, color: P.ink }}>
+              what's{' '}
+              <span style={{ position: 'relative', display: 'inline-block' }}>
+                cooking
+                <span style={{ position: 'absolute', left: 0, right: 0, bottom: -4, height: 8, background: P.yellow, zIndex: -1, transform: 'rotate(-1deg)' }} />
+              </span>?
+            </div>
+            <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', border: `2px solid ${P.ink}`, borderRadius: 999, boxShadow: `3px 3px 0 ${P.ink}`, maxWidth: 460, cursor: 'text' }}>
+              <Icon name="search" size={17} width={2.2} />
+              <span style={{ font: body(14), color: P.ink, opacity: 0.45 }}>noodles, layla, under 30 min…</span>
+            </div>
+          </div>
+          <div style={{ flex: 1, padding: '18px 32px 32px', overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12, alignContent: 'start' }}>
+            {loading
+              ? <div style={{ gridColumn: '1/-1', paddingTop: 40, textAlign: 'center', font: mono(11), opacity: 0.5, letterSpacing: 1.5, textTransform: 'uppercase' }}>loading…</div>
+              : recipes.map(r => <RecipeCard key={r.id} r={r} onClick={() => setSelectedRecipe(r)} />)
+            }
+          </div>
+        </>}
+
+        {screen === 'sheet' && (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: 460, background: P.bg, border: `2px solid ${P.ink}`, borderRadius: 20, padding: '28px 24px', boxShadow: `6px 6px 0 ${P.ink}` }}>
+              <div style={{ font: disp(26), letterSpacing: -0.6, marginBottom: 20 }}>
+                <span style={{ position: 'relative', display: 'inline-block' }}>
+                  add<span style={{ position: 'absolute', left: -2, right: -2, bottom: -3, height: 7, background: P.red, zIndex: -1, transform: 'rotate(-1deg)' }} />
+                </span>{' '}a recipe
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {sheetOpts.map(o => (
+                  <div key={o.title} onClick={() => navigate(o.to)} style={{ display: 'grid', gridTemplateColumns: '52px 1fr 22px', alignItems: 'center', gap: 12, padding: '14px', background: o.bg, color: o.color, border: `2px solid ${P.ink}`, borderRadius: 14, boxShadow: `4px 4px 0 ${P.ink}`, cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ width: 46, height: 46, borderRadius: 10, background: P.ink, color: P.bg, display: 'grid', placeItems: 'center' }}>
+                      <Icon name={o.icon} size={22} width={2.2} />
+                    </div>
+                    <div>
+                      <div style={{ font: disp(19), letterSpacing: -0.4 }}>{o.title}</div>
+                      <div style={{ font: mono(10), opacity: 0.7, marginTop: 3, letterSpacing: 0.4 }}>{o.sub}</div>
+                    </div>
+                    <Icon name="arrow" size={20} />
+                  </div>
+                ))}
+              </div>
+              <div onClick={() => navigate('home')} style={{ marginTop: 16, textAlign: 'center', font: mono(11), opacity: 0.5, cursor: 'pointer', letterSpacing: 0.5 }}>cancel</div>
+            </div>
+          </div>
+        )}
+
+        {screen === 'manual' && <ManualScreen onNavigate={navigate} user={user} editRecipe={editRecipe} onSaved={() => { setEditRecipe(null); afterSaved(); }} />}
+        {screen === 'link'   && <LinkScreen   onNavigate={navigate} user={user} onSaved={reload} />}
+        {screen === 'scan'   && <ScanScreen   onNavigate={navigate} />}
+      </div>
+
+      {/* Detail panel */}
+      {showDetail && (
+        <div style={{ width: 380, background: P.paper, borderLeft: `2px solid ${P.ink}`, display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
+          <DesktopRecipeDetail recipe={selectedRecipe} user={user} onClose={() => setSelectedRecipe(null)} onDeleted={afterDeleted} onEdit={openEdit} />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -918,6 +1194,7 @@ function App() {
   const [screen, setScreen]                     = useState('home');
   const [selectedRecipe, setSelectedRecipe]     = useState(null);
   const [editRecipe, setEditRecipe]             = useState(null);
+  const isDesktop                               = useWindowWidth() >= 900;
 
   const navigate    = (s) => setScreen(s);
   function openRecipe(r) { setSelectedRecipe(r); setScreen('cooking'); }
@@ -925,7 +1202,6 @@ function App() {
   function afterSaved()  { reload(); setScreen('home'); }
   function afterDeleted(){ setSelectedRecipe(null); reload(); setScreen('home'); }
 
-  // Still checking session
   if (user === undefined) {
     return (
       <div style={{ width: '100vw', height: '100vh', background: '#1a1815', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -939,13 +1215,25 @@ function App() {
     );
   }
 
-  // Supabase configured but not signed in
   if (CONFIGURED && !user) {
+    if (isDesktop) {
+      return (
+        <div style={{ width: '100vw', height: '100vh', background: '#1a1815', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: 420, background: P.bg, border: `2px solid ${P.ink}`, borderRadius: 24, boxShadow: `8px 8px 0 ${P.ink}`, overflow: 'hidden' }}>
+            <div style={{ height: 520 }}><AuthScreen /></div>
+          </div>
+        </div>
+      );
+    }
     return (
       <div style={{ width: '100vw', height: '100vh', background: '#1a1815', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Phone><AuthScreen /></Phone>
       </div>
     );
+  }
+
+  if (isDesktop) {
+    return <DesktopLayout user={user} recipes={recipes} loading={loading} reload={reload} />;
   }
 
   return (
