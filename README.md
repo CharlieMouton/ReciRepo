@@ -116,14 +116,15 @@ Six tables, one view. Everything has Row Level Security enabled.
 
 ```
 profiles        — one row per auth user (username, created_at)
-recipes         — title, author_id, time_text, servings, color, accent, source_url
+recipes         — title, author_id, time_text, servings, color, accent, source_url, image_url
 recipe_tags     — recipe_id + tag (many-to-many)
 ingredients     — recipe_id, qty, item, sort_order
 steps           — recipe_id, text, timer_seconds, sort_order
 saves           — user_id + recipe_id (bookmarks)
 cook_logs       — user_id + recipe_id + cooked_at
 
-recipes_with_meta  ← view: recipes joined with author username, cook count, and tags array
+recipe-images   ← Supabase Storage bucket (public) for cover photos
+recipes_with_meta  ← view: recipes joined with author username, cook count, tags, and image_url
 ```
 
 A new `profiles` row is created automatically via a Postgres trigger whenever a user signs up.

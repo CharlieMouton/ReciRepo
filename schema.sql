@@ -42,6 +42,7 @@ create table public.recipes (
   color      text default '#E8C36E',        -- placeholder card colour
   accent     text default '#2F2A2A',
   source_url text,                          -- for "add via link"
+  image_url  text,                          -- cover photo (Supabase Storage public URL)
   created_at timestamptz default now()
 );
 alter table public.recipes enable row level security;
@@ -125,6 +126,7 @@ select
   r.color,
   r.accent,
   r.source_url,
+  r.image_url,
   r.created_at,
   count(distinct cl.id)                                        as cook_count,
   coalesce(array_agg(distinct rt.tag) filter (where rt.tag is not null), '{}') as tags
@@ -133,3 +135,25 @@ join      public.profiles     p  on p.id = r.author_id
 left join public.cook_logs    cl on cl.recipe_id = r.id
 left join public.recipe_tags  rt on rt.recipe_id = r.id
 group by  r.id, p.username;
+
+-- ── Storage: recipe cover images ──────────────────────────────────────────
+-- Run in Supabase Dashboard → Storage → New bucket, OR via SQL:
+insert into storage.buckets (id, name, public)
+values ('recipe-images', 'recipe-images', true)
+on conflict (id) do nothing;
+
+create policy "Anyone can view recipe images"
+  on storage.objects for select
+  using (bucket_id = 'recipe-images');
+
+create policy "Authenticated users can upload recipe images"
+  on storage.objects for insert
+  with check (bucket_id = 'recipe-images' and auth.role() = 'authenticated');
+
+create policy "Users can update own recipe images"
+  on storage.objects for update
+  using (bucket_id = 'recipe-images' and auth.uid()::text = (storage.foldername(name))[1]);
+
+create policy "Users can delete own recipe images"
+  on storage.objects for delete
+  using (bucket_id = 'recipe-images' and auth.uid()::text = (storage.foldername(name))[1]);

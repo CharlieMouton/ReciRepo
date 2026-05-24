@@ -146,7 +146,16 @@ async function extractRecipeFromUrl(url) {
       source_url:  url,
     };
   }
-  return null; // no Recipe JSON-LD found
+  // No JSON-LD found — strip HTML and try the plaintext heuristic parser
+  const text = contents
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  return parseRecipeText(text);
 }
 
 function parseRecipeText(raw) {
@@ -242,7 +251,7 @@ function useRecipes() {
       const { data } = await sb.from('recipes_with_meta').select('*').order('created_at', { ascending: false });
       setRecipes(
         data && data.length
-          ? data.map(r => ({ id: r.id, title: r.title, author: r.author_username, author_id: r.author_id, time: r.time_text || '?', servings: r.servings || 2, tags: r.tags || [], color: r.color, accent: r.accent, cooks: Number(r.cook_count) || 0 }))
+          ? data.map(r => ({ id: r.id, title: r.title, author: r.author_username, author_id: r.author_id, time: r.time_text || '?', servings: r.servings || 2, tags: r.tags || [], color: r.color, accent: r.accent, cooks: Number(r.cook_count) || 0, image_url: r.image_url || null }))
           : SAMPLE_RECIPES
       );
     } catch { setRecipes(SAMPLE_RECIPES); }
@@ -304,24 +313,55 @@ function Icon({ name, size = 20, stroke = 'currentColor', width = 2, style }) {
 function Avatar({ name = '?', size = 32, style }) {
   let h = 2166136261;
   for (let i = 0; i < name.length; i++) { h ^= name.charCodeAt(i); h = (h * 16777619) >>> 0; }
-  const palettes = [['#D94F4F','#FCEDE2'],['#F6C26B','#2F2A2A'],['#A8431A','#F0E3CC'],['#C68A3E','#2F2A2A'],['#6B7A3E','#F6C26B'],['#2F2A2A','#F6C26B'],['#8E3A52','#FCEDE2'],['#E89B5A','#2F2A2A']];
+  const palettes = [
+    ['#D94F4F','#FCEDE2'], ['#F6C26B','#2F2A2A'], ['#A8431A','#F0E3CC'], ['#C68A3E','#2F2A2A'],
+    ['#6B7A3E','#F6C26B'], ['#2F2A2A','#F6C26B'], ['#8E3A52','#FCEDE2'], ['#E89B5A','#2F2A2A'],
+  ];
   const [bg, fg] = palettes[h % palettes.length];
   const shapes = ['circle','square','diamond','bar','half','donut'];
   const shape = shapes[(h >> 4) % shapes.length];
   const rot = ((h >> 8) % 8) * 15, off = ((h >> 12) % 5) - 2;
   const C = 32, cx = 16 + off, cy = 16 + off;
+
+  // Gradient: blend fg 55% toward bg for stop-2
+  const mixHex = (a, b, t) => '#' + [1,3,5].map(i =>
+    Math.round(parseInt(a.slice(i,i+2),16)*(1-t) + parseInt(b.slice(i,i+2),16)*t)
+      .toString(16).padStart(2,'0')
+  ).join('');
+  const fg2 = mixHex(fg, bg, 0.5);
+  // Second gradient: cross-fade bg at 30% for the background radial
+  const bg2 = mixHex(bg, fg, 0.18);
+  const gradId  = `avs${(h >>> 0).toString(16)}`;
+  const bgGradId = `avb${(h >>> 0).toString(16)}`;
+  const gf = `url(#${gradId})`;
+  // Gradient direction varies by name hash
+  const gx2 = ((h >> 20) % 2) ? '100%' : '0%';
+  const gy2 = ((h >> 22) % 2) ? '100%' : '0%';
+
   let mark;
   switch (shape) {
-    case 'circle':  mark = <circle cx={cx} cy={cy} r={9} fill={fg} />; break;
-    case 'square':  mark = <rect x={cx-9} y={cy-9} width={18} height={18} fill={fg} />; break;
-    case 'diamond': mark = <rect x={cx-8} y={cy-8} width={16} height={16} fill={fg} transform={`rotate(45 ${cx} ${cy})`} />; break;
-    case 'bar':     mark = <rect x={0} y={cy-5} width={C} height={10} fill={fg} />; break;
-    case 'half':    mark = <><circle cx={cx} cy={cy} r={10} fill={fg}/><rect x={cx-11} y={cy-11} width={22} height={11} fill={bg}/></>; break;
-    default:        mark = <><circle cx={cx} cy={cy} r={10} fill={fg}/><circle cx={cx} cy={cy} r={4} fill={bg}/></>; break;
+    case 'circle':  mark = <circle cx={cx} cy={cy} r={9} fill={gf} />; break;
+    case 'square':  mark = <rect x={cx-9} y={cy-9} width={18} height={18} fill={gf} />; break;
+    case 'diamond': mark = <rect x={cx-8} y={cy-8} width={16} height={16} fill={gf} transform={`rotate(45 ${cx} ${cy})`} />; break;
+    case 'bar':     mark = <rect x={0} y={cy-5} width={C} height={10} fill={gf} />; break;
+    case 'half':    mark = <><circle cx={cx} cy={cy} r={10} fill={gf}/><rect x={cx-11} y={cy-11} width={22} height={11} fill={`url(#${bgGradId})`}/></>; break;
+    default:        mark = <><circle cx={cx} cy={cy} r={10} fill={gf}/><circle cx={cx} cy={cy} r={4} fill={`url(#${bgGradId})`}/></>; break;
   }
   return (
-    <div style={{ width: size, height: size, borderRadius: '50%', background: bg, overflow: 'hidden', display: 'inline-block', flexShrink: 0, border: `1.8px solid ${P.ink}`, ...style }}>
-      <svg viewBox={`0 0 ${C} ${C}`} width="100%" height="100%" style={{ display: 'block', transform: `rotate(${rot}deg)` }}>{mark}</svg>
+    <div style={{ width: size, height: size, borderRadius: '50%', background: `linear-gradient(135deg, ${bg} 0%, ${bg2} 100%)`, overflow: 'hidden', display: 'inline-block', flexShrink: 0, border: `1.8px solid ${P.ink}`, ...style }}>
+      <svg viewBox={`0 0 ${C} ${C}`} width="100%" height="100%" style={{ display: 'block', transform: `rotate(${rot}deg)` }}>
+        <defs>
+          <linearGradient id={gradId} x1="0%" y1="0%" x2={gx2} y2={gy2}>
+            <stop offset="0%" stopColor={fg} />
+            <stop offset="100%" stopColor={fg2} />
+          </linearGradient>
+          <linearGradient id={bgGradId} x1="0%" y1="0%" x2={gx2} y2={gy2}>
+            <stop offset="0%" stopColor={bg} />
+            <stop offset="100%" stopColor={bg2} />
+          </linearGradient>
+        </defs>
+        {mark}
+      </svg>
     </div>
   );
 }
@@ -333,6 +373,18 @@ function FoodPlaceholder({ color = '#C2562E', accent = '#FCEDE2', label, stripes
       {children}
     </div>
   );
+}
+
+function RecipeCover({ url, color, accent, children }) {
+  if (url) {
+    return (
+      <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
+        <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+        {children}
+      </div>
+    );
+  }
+  return <FoodPlaceholder color={color} accent={accent}>{children}</FoodPlaceholder>;
 }
 
 function Sticker({ children, bg = P.red, color = P.bg, rotate = -2, size = 10, style }) {
@@ -402,7 +454,7 @@ function RecipeCard({ r, onClick }) {
         </div>
       </div>
       <div style={{ borderRadius: 8, overflow: 'hidden', border: `1.5px solid ${P.ink}` }}>
-        <FoodPlaceholder color={r.color} accent={r.accent} label={typeof r.id === 'string' && r.id.length < 20 ? r.id : null} />
+        <RecipeCover url={r.image_url} color={r.color} accent={r.accent} />
       </div>
     </div>
   );
@@ -499,20 +551,69 @@ function AuthScreen() {
   );
 }
 
+// ── Compact recipe tile for horizontal strips ──────────────────────────────
+function RecipeMini({ r, onClick }) {
+  return (
+    <div onClick={onClick} style={{ flexShrink: 0, width: 90, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
+      <div style={{ width: 90, height: 90, borderRadius: 12, overflow: 'hidden', border: `1.5px solid ${P.ink}`, boxShadow: `2px 2px 0 ${P.ink}` }}>
+        <RecipeCover url={r.image_url} color={r.color} accent={r.accent} />
+      </div>
+      <div style={{ marginTop: 5, font: `700 11px/1.25 'Bricolage Grotesque', sans-serif`, color: P.ink, letterSpacing: -0.2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{r.title}</div>
+      <div style={{ font: mono(9), opacity: 0.5, letterSpacing: 0.3, marginTop: 1 }}>{r.time}</div>
+    </div>
+  );
+}
+
 // ╭─────────────────────────────────────────────────────────────────────────╮
 // │  Home screen                                                            │
 // ╰─────────────────────────────────────────────────────────────────────────╯
-function HomeScreen({ recipes, loading, onNavigate, onOpenRecipe, user, saved, toggleSave }) {
-  const [query, setQuery] = useState('');
+function HomeScreen({ recipes, loading, onNavigate, onOpenRecipe, user, saved, toggleSave, active = 'home', searchKey = 0, recentlyViewed = [] }) {
+  const [query, setQuery]           = useState('');
+  const [activeFilter, setActiveFilter] = useState(null); // null|'tags'|'time'
+  const [selectedTags, setSelectedTags] = useState(new Set());
+  const [timeLimit, setTimeLimit]   = useState(null);     // null|20|30|45
+  const searchRef                   = useRef(null);
   const username = user?.user_metadata?.username || user?.email?.split('@')[0] || 'you';
+
+  // Focus search when search tab is tapped
+  useEffect(() => { if (searchKey > 0) searchRef.current?.focus(); }, [searchKey]);
+
   const q = query.trim().toLowerCase();
-  const filtered = q
+
+  function parseMinutes(t) {
+    if (!t) return null;
+    const h = Number((t.match(/(\d+)\s*h/) || [0,0])[1]);
+    const m = Number((t.match(/(\d+)\s*min/) || [0,0])[1]);
+    return (h * 60 + m) || null;
+  }
+
+  let filtered = q
     ? recipes.filter(r =>
         r.title.toLowerCase().includes(q) ||
         r.author.toLowerCase().includes(q) ||
         (r.tags || []).some(t => t.includes(q))
       )
     : recipes;
+  if (activeFilter === 'tags' && selectedTags.size > 0)
+    filtered = filtered.filter(r => [...selectedTags].every(t => (r.tags || []).includes(t)));
+  if (activeFilter === 'time' && timeLimit)
+    filtered = filtered.filter(r => { const m = parseMinutes(r.time); return m && m <= timeLimit; });
+
+  const allTags = [...new Set(recipes.flatMap(r => r.tags || []))].sort();
+  const isFiltering = q || (activeFilter === 'tags' && selectedTags.size > 0) || (activeFilter === 'time' && timeLimit);
+
+  function toggleFilter(key) {
+    if (activeFilter === key) { setActiveFilter(null); setSelectedTags(new Set()); setTimeLimit(null); }
+    else { setActiveFilter(key); setSelectedTags(new Set()); setTimeLimit(null); }
+  }
+
+  const filterOpts = [
+    { key: null,     label: 'all'    },
+    { key: 'tags',   label: 'tags'   },
+    { key: 'time',   label: 'time'   },
+    { key: 'who',    label: 'who'    },
+    { key: 'pantry', label: 'pantry' },
+  ];
 
   return (
     <>
@@ -538,39 +639,91 @@ function HomeScreen({ recipes, loading, onNavigate, onOpenRecipe, user, saved, t
         </div>
       </div>
 
+      {/* Search bar */}
       <div style={{ padding: '14px 20px 0' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 14px', background: P.bg, border: `2px solid ${P.ink}`, borderRadius: 999, boxShadow: `3px 3px 0 ${P.ink}` }}>
           <Icon name="search" size={17} width={2.2} />
           <input
+            ref={searchRef}
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="noodles, layla, under 30 min…"
             style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', font: body(14), color: P.ink }}
           />
-          {query && (
-            <div onClick={() => setQuery('')} style={{ cursor: 'pointer', opacity: 0.45, lineHeight: 0 }}>
-              <Icon name="close" size={14} />
-            </div>
-          )}
+          {query && <div onClick={() => setQuery('')} style={{ cursor: 'pointer', opacity: 0.45, lineHeight: 0 }}><Icon name="close" size={14} /></div>}
         </div>
       </div>
 
-      <div style={{ padding: '12px 20px 0', display: 'flex', gap: 7, overflow: 'hidden' }}>
-        {['all','tags','who','time','pantry'].map((label, i) => (
-          <div key={label} style={{ padding: '5px 12px', borderRadius: 999, border: `1.6px solid ${P.ink}`, background: i === 0 ? P.ink : 'transparent', color: i === 0 ? P.bg : P.ink, font: body(12, 600), cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>{label}</div>
-        ))}
+      {/* Filter chips */}
+      <div style={{ padding: '10px 20px 0', display: 'flex', gap: 7, overflowX: 'auto', scrollbarWidth: 'none' }}>
+        {filterOpts.map(({ key, label }) => {
+          const on = activeFilter === key || (key === null && activeFilter === null);
+          const disabled = key === 'who' || key === 'pantry';
+          return (
+            <div key={label} onClick={() => !disabled && (key === null ? (setActiveFilter(null), setSelectedTags(new Set()), setTimeLimit(null)) : toggleFilter(key))}
+              style={{ padding: '5px 12px', borderRadius: 999, border: `1.6px solid ${on ? P.ink : P.ink + '55'}`, background: on ? P.ink : 'transparent', color: on ? P.bg : P.ink, font: body(12, on ? 700 : 500), cursor: disabled ? 'default' : 'pointer', userSelect: 'none', whiteSpace: 'nowrap', opacity: disabled ? 0.35 : 1, flexShrink: 0 }}>
+              {label}
+            </div>
+          );
+        })}
       </div>
 
-      <div style={{ padding: '14px 20px 110px', display: 'flex', flexDirection: 'column', gap: 11, overflowY: 'auto', height: 'calc(100% - 206px)' }}>
-        {loading
-          ? <div style={{ paddingTop: 40, textAlign: 'center', font: mono(11), opacity: 0.5, letterSpacing: 1.5, textTransform: 'uppercase' }}>loading…</div>
-          : filtered.length === 0
-          ? <div style={{ paddingTop: 40, textAlign: 'center', font: mono(11), opacity: 0.5, letterSpacing: 1.5, textTransform: 'uppercase' }}>no results</div>
-          : filtered.map(r => <RecipeCard key={r.id} r={r} onClick={() => onOpenRecipe(r)} />)
-        }
+      {/* Scrollable body */}
+      <div style={{ padding: '0 20px 110px', overflowY: 'auto', height: 'calc(100% - 210px)' }}>
+
+        {/* Tag filter picker */}
+        {activeFilter === 'tags' && (
+          <div style={{ paddingTop: 10, paddingBottom: 4 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {allTags.map(tag => {
+                const sel = selectedTags.has(tag);
+                return (
+                  <div key={tag} onClick={() => setSelectedTags(prev => { const n = new Set(prev); sel ? n.delete(tag) : n.add(tag); return n; })}
+                    style={{ padding: '5px 10px', borderRadius: 999, border: `1.6px solid ${P.ink}`, background: sel ? P.red : 'transparent', color: sel ? P.bg : P.ink, font: body(12, sel ? 700 : 500), cursor: 'pointer', userSelect: 'none' }}>
+                    {tag}
+                  </div>
+                );
+              })}
+              {allTags.length === 0 && <div style={{ font: mono(10), opacity: 0.4, paddingTop: 2 }}>no tags yet</div>}
+            </div>
+          </div>
+        )}
+
+        {/* Time filter picker */}
+        {activeFilter === 'time' && (
+          <div style={{ paddingTop: 10, paddingBottom: 4, display: 'flex', gap: 8 }}>
+            {[[20,'≤ 20 min'],[30,'≤ 30 min'],[45,'≤ 45 min']].map(([mins, label]) => (
+              <div key={mins} onClick={() => setTimeLimit(timeLimit === mins ? null : mins)}
+                style={{ padding: '6px 12px', borderRadius: 999, border: `1.6px solid ${P.ink}`, background: timeLimit === mins ? P.ink : 'transparent', color: timeLimit === mins ? P.bg : P.ink, font: body(12, 600), cursor: 'pointer', userSelect: 'none' }}>
+                {label}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Recently viewed strip */}
+        {!isFiltering && recentlyViewed.length > 0 && (
+          <div style={{ paddingTop: 14, paddingBottom: 4 }}>
+            <Eyebrow style={{ marginBottom: 10 }}>recently viewed</Eyebrow>
+            <div style={{ display: 'flex', gap: 10, overflowX: 'auto', marginLeft: -20, marginRight: -20, paddingLeft: 20, paddingRight: 20, scrollbarWidth: 'none' }}>
+              {recentlyViewed.map(r => <RecipeMini key={r.id} r={r} onClick={() => onOpenRecipe(r)} />)}
+            </div>
+          </div>
+        )}
+
+        {/* Feed */}
+        <div style={{ paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 11 }}>
+          {!isFiltering && recentlyViewed.length > 0 && <Eyebrow>all recipes</Eyebrow>}
+          {loading
+            ? <div style={{ paddingTop: 40, textAlign: 'center', font: mono(11), opacity: 0.5, letterSpacing: 1.5, textTransform: 'uppercase' }}>loading…</div>
+            : filtered.length === 0
+            ? <div style={{ paddingTop: 40, textAlign: 'center', font: mono(11), opacity: 0.5, letterSpacing: 1.5, textTransform: 'uppercase' }}>no results</div>
+            : filtered.map(r => <RecipeCard key={r.id} r={r} onClick={() => onOpenRecipe(r)} />)
+          }
+        </div>
       </div>
 
-      <TabBar active="home" onNavigate={onNavigate} />
+      <TabBar active={active === 'sheet' ? 'home' : active} onNavigate={onNavigate} />
     </>
   );
 }
@@ -744,8 +897,19 @@ function ManualScreen({ onNavigate, user, onSaved, editRecipe, initialData }) {
   const [saving, setSaving]         = useState(false);
   const [error, setError]           = useState('');
   const [sourceUrl, setSourceUrl]   = useState('');
-  const [showPaste, setShowPaste]   = useState(false);
-  const [pasteText, setPasteText]   = useState('');
+  const [showPaste, setShowPaste]       = useState(false);
+  const [pasteText, setPasteText]       = useState('');
+  const [coverFile, setCoverFile]       = useState(null);
+  const [coverPreview, setCoverPreview] = useState('');
+  const [coverUrl, setCoverUrl]         = useState('');
+  const coverInputRef                   = useRef(null);
+
+  function handleCoverFile(e) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setCoverFile(f);
+    setCoverPreview(URL.createObjectURL(f));
+  }
 
   useEffect(() => {
     if (!isEdit || !CONFIGURED) return;
@@ -760,6 +924,8 @@ function ManualScreen({ onNavigate, user, onSaved, editRecipe, initialData }) {
       setTags(editRecipe.tags || []);
       setIngred(ings?.length ? ings.map(i => ({ qty: i.qty || '', item: i.item || '' })) : [{ qty: '', item: '' }]);
       setSteps(stps?.length ? stps.map(s => s.text) : ['']);
+      setCoverUrl(editRecipe.image_url || '');
+      setCoverPreview(editRecipe.image_url || '');
     })();
   }, [editRecipe?.id]);
 
@@ -801,9 +967,18 @@ function ManualScreen({ onNavigate, user, onSaved, editRecipe, initialData }) {
     setSaving(true); setError('');
     try {
       if (CONFIGURED && user) {
+        let imageUrl = coverUrl;
+        if (coverFile) {
+          const ext = coverFile.name.split('.').pop().toLowerCase();
+          const path = `${user.id}/${Date.now()}.${ext}`;
+          const { error: upErr } = await sb.storage.from('recipe-images').upload(path, coverFile, { upsert: true });
+          if (upErr) throw upErr;
+          const { data: { publicUrl } } = sb.storage.from('recipe-images').getPublicUrl(path);
+          imageUrl = publicUrl;
+        }
         let recipeId;
         if (isEdit) {
-          const { error: e1 } = await sb.from('recipes').update({ title: title.trim(), time_text: timeText, servings: parseInt(servings) || 2 }).eq('id', editRecipe.id);
+          const { error: e1 } = await sb.from('recipes').update({ title: title.trim(), time_text: timeText, servings: parseInt(servings) || 2, ...(imageUrl !== undefined ? { image_url: imageUrl || null } : {}) }).eq('id', editRecipe.id);
           if (e1) throw e1;
           recipeId = editRecipe.id;
           await Promise.all([
@@ -812,7 +987,7 @@ function ManualScreen({ onNavigate, user, onSaved, editRecipe, initialData }) {
             sb.from('steps').delete().eq('recipe_id', recipeId),
           ]);
         } else {
-          const { data: recipe, error: e1 } = await sb.from('recipes').insert({ title: title.trim(), author_id: user.id, time_text: timeText, servings: parseInt(servings) || 2, color: '#E8C36E', accent: '#2F2A2A', ...(sourceUrl ? { source_url: sourceUrl } : {}) }).select().single();
+          const { data: recipe, error: e1 } = await sb.from('recipes').insert({ title: title.trim(), author_id: user.id, time_text: timeText, servings: parseInt(servings) || 2, color: '#E8C36E', accent: '#2F2A2A', ...(sourceUrl ? { source_url: sourceUrl } : {}), ...(imageUrl ? { image_url: imageUrl } : {}) }).select().single();
           if (e1) throw e1;
           recipeId = recipe.id;
         }
@@ -847,7 +1022,7 @@ function ManualScreen({ onNavigate, user, onSaved, editRecipe, initialData }) {
 
       {error && <div style={{ margin: '6px 18px 0', font: mono(11), color: P.red }}>{error}</div>}
 
-      <div style={{ padding: '12px 18px 24px', overflowY: 'auto', height: 'calc(100% - 56px)' }}>
+      <div style={{ padding: '12px 18px 100px', overflowY: 'auto', height: 'calc(100% - 56px)' }}>
         {/* Smart paste helper */}
         <div style={{ marginBottom: 14, border: `1.5px solid ${P.ink}22`, borderRadius: 12, overflow: 'hidden' }}>
           <div onClick={() => setShowPaste(v => !v)} style={{ padding: '9px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', font: mono(11), opacity: 0.55, letterSpacing: 0.3, userSelect: 'none' }}>
@@ -872,11 +1047,22 @@ function ManualScreen({ onNavigate, user, onSaved, editRecipe, initialData }) {
         </div>
 
         {/* Cover slot */}
-        <div style={{ height: 120, borderRadius: 14, border: `2px dashed ${P.ink}`, background: P.paper, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-          <div style={{ width: 40, height: 40, background: P.yellow, borderRadius: '50%', border: `1.8px solid ${P.ink}`, display: 'grid', placeItems: 'center', transform: 'rotate(-2deg)' }}>
-            <Icon name="camera" size={20} />
-          </div>
-          <div style={{ font: mono(10), letterSpacing: 0.8, textTransform: 'uppercase', opacity: 0.6 }}>tap for cover photo</div>
+        <input ref={coverInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleCoverFile} />
+        <div onClick={() => coverInputRef.current?.click()} style={{ height: 120, borderRadius: 14, border: `2px dashed ${P.ink}`, overflow: 'hidden', cursor: 'pointer', position: 'relative' }}>
+          {coverPreview
+            ? <img src={coverPreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+            : <div style={{ height: '100%', background: P.paper, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <div style={{ width: 40, height: 40, background: P.yellow, borderRadius: '50%', border: `1.8px solid ${P.ink}`, display: 'grid', placeItems: 'center', transform: 'rotate(-2deg)' }}>
+                  <Icon name="camera" size={20} />
+                </div>
+                <div style={{ font: mono(10), letterSpacing: 0.8, textTransform: 'uppercase', opacity: 0.6 }}>tap for cover photo</div>
+              </div>
+          }
+          {coverPreview && (
+            <div onClick={e => { e.stopPropagation(); setCoverFile(null); setCoverPreview(''); setCoverUrl(''); }} style={{ position: 'absolute', top: 8, right: 8, width: 26, height: 26, borderRadius: '50%', background: `${P.ink}cc`, display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
+              <Icon name="close" size={12} stroke={P.bg} />
+            </div>
+          )}
         </div>
 
         {/* Title */}
@@ -886,16 +1072,13 @@ function ManualScreen({ onNavigate, user, onSaved, editRecipe, initialData }) {
         </div>
 
         {/* Meta */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 14 }}>
-          {[['time','e.g. 20 min', timeText, setTimeText],['serves','2', servings, setServings]].flatMap(([k, ph, val, set], i) => (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 14 }}>
+          {[['time','e.g. 20 min', timeText, setTimeText],['serves','2', servings, setServings]].map(([k, ph, val, set]) => (
             <div key={k} style={{ border: `1.8px solid ${P.ink}`, borderRadius: 10, padding: '6px 10px', background: P.bg }}>
               <div style={{ font: mono(9), opacity: 0.6, textTransform: 'uppercase', letterSpacing: 1 }}>{k}</div>
               <input value={val} onChange={e => set(e.target.value)} placeholder={ph} style={{ ...fieldBase, font: `800 18px/1 'Bricolage Grotesque', sans-serif`, marginTop: 2, display: 'block', width: '100%' }} />
             </div>
           ))}
-          <div style={{ border: `1.8px solid ${P.ink}`, borderRadius: 10, padding: '6px 10px', background: P.paper, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ font: mono(9), opacity: 0.5, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center', lineHeight: 1.4 }}>photo<br/>soon</div>
-          </div>
         </div>
 
         {/* Tags */}
@@ -1148,22 +1331,28 @@ function ScanScreen({ onNavigate, onExtracted }) {
 // │  Cooking screen                                                         │
 // ╰─────────────────────────────────────────────────────────────────────────╯
 function CookingScreen({ recipe, user, onNavigate, onDeleted, onEdit, saved, toggleSave }) {
-  const [detail, setDetail]               = useState(null);
-  const [stepIdx, setStepIdx]             = useState(0);
-  const [serves, setServes]               = useState(2);
-  const [confirmDel, setConfirmDel]       = useState(false);
-  const [deleting, setDeleting]           = useState(false);
-  const [activeTab, setActiveTab]         = useState('steps');
-  const [timerRunning, setTimerRunning]   = useState(false);
-  const [timerLeft, setTimerLeft]         = useState(0);
+  const [detail, setDetail]             = useState(null);
+  const [stepIdx, setStepIdx]           = useState(0);
+  const [serves, setServes]             = useState(2);
+  const [confirmDel, setConfirmDel]     = useState(false);
+  const [deleting, setDeleting]         = useState(false);
+  const [activeTab, setActiveTab]       = useState('steps');
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [timerLeft, setTimerLeft]       = useState(0);
+  const [cookingMode, setCookingMode]   = useState(false);
+  const [wakeActive, setWakeActive]     = useState(false);
+  const wakelockRef                     = useRef(null);
 
   const r = recipe || {};
   const isOwner = CONFIGURED && user?.id && r.author_id && user.id === r.author_id;
   const isSaved = saved?.has(r.id);
 
+  // Release wake lock on unmount
+  useEffect(() => () => { wakelockRef.current?.release().catch(() => {}); }, []);
+
   // Load recipe detail
   useEffect(() => {
-    setStepIdx(0); setActiveTab('steps'); setConfirmDel(false);
+    setStepIdx(0); setActiveTab('steps'); setConfirmDel(false); setCookingMode(false);
     if (!CONFIGURED || !recipe) {
       setDetail({ ...SAMPLE_DETAIL, title: r.title || SAMPLE_DETAIL.title, author: r.author || SAMPLE_DETAIL.author, time: r.time || SAMPLE_DETAIL.time, cooks: r.cooks ?? SAMPLE_DETAIL.cooks });
       setServes(r.servings || SAMPLE_DETAIL.servings);
@@ -1190,25 +1379,31 @@ function CookingScreen({ recipe, user, onNavigate, onDeleted, onEdit, saved, tog
   const step        = steps[stepIdx] || { text: '', timer: 0 };
   const origServings = detail?.servings || 2;
   const ingredients = detail?.ingredients || [];
-  const stepLabel   = stepIdx + 1 === total ? 'last one!' : stepIdx < Math.floor(total / 2) ? 'getting started' : 'halfway there';
 
   // Reset timer when step changes
-  useEffect(() => {
-    setTimerRunning(false);
-    setTimerLeft(step.timer);
-  }, [stepIdx, step.timer]);
+  useEffect(() => { setTimerRunning(false); setTimerLeft(step.timer); }, [stepIdx, step.timer]);
 
   // Countdown tick
   useEffect(() => {
     if (!timerRunning) return;
-    const id = setInterval(() => {
-      setTimerLeft(t => {
-        if (t <= 1) { clearInterval(id); setTimerRunning(false); return 0; }
-        return t - 1;
-      });
-    }, 1000);
+    const id = setInterval(() => setTimerLeft(t => { if (t <= 1) { clearInterval(id); setTimerRunning(false); return 0; } return t - 1; }), 1000);
     return () => clearInterval(id);
   }, [timerRunning]);
+
+  async function toggleWake() {
+    if (wakeActive && wakelockRef.current) {
+      try { await wakelockRef.current.release(); } catch {}
+      wakelockRef.current = null; setWakeActive(false);
+    } else {
+      try {
+        const lock = await navigator.wakeLock?.request('screen');
+        if (lock) {
+          wakelockRef.current = lock; setWakeActive(true);
+          lock.addEventListener('release', () => { setWakeActive(false); wakelockRef.current = null; });
+        }
+      } catch {}
+    }
+  }
 
   async function handleDelete() {
     if (!confirmDel) { setConfirmDel(true); return; }
@@ -1225,40 +1420,38 @@ function CookingScreen({ recipe, user, onNavigate, onDeleted, onEdit, saved, tog
   }
 
   function handleTimer() {
-    if (timerRunning) {
-      setTimerRunning(false);
-    } else {
-      if (timerLeft <= 0) setTimerLeft(step.timer);
-      setTimerRunning(true);
-    }
+    if (timerRunning) { setTimerRunning(false); }
+    else { if (timerLeft <= 0) setTimerLeft(step.timer); setTimerRunning(true); }
   }
 
   const displayTime = timerLeft > 0 ? timerLeft : step.timer;
+  const isLastStep  = stepIdx === total - 1;
 
-  return (
+  // ── Shared top chrome ────────────────────────────────────────────────────
+  const topChrome = (
     <>
+      {/* Header */}
       <div style={{ padding: '4px 18px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div onClick={() => onNavigate('home')} style={{ width: 32, height: 32, borderRadius: '50%', border: `1.8px solid ${P.ink}`, display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
           <Icon name="back" size={16} />
         </div>
-        <Eyebrow>screen-awake · on</Eyebrow>
+        {/* Screen-awake toggle */}
+        <div onClick={toggleWake} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 999, border: `1.5px solid ${wakeActive ? P.red : P.ink + '44'}`, cursor: 'pointer', userSelect: 'none', transition: 'all 0.15s' }}>
+          <div style={{ width: 7, height: 7, borderRadius: '50%', background: wakeActive ? P.red : `${P.ink}44`, transition: 'background 0.15s' }} />
+          <span style={{ font: mono(9), color: wakeActive ? P.red : P.ink, opacity: wakeActive ? 1 : 0.5, letterSpacing: 0.6 }}>screen awake · {wakeActive ? 'on' : 'off'}</span>
+        </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {isOwner && (
-            <div onClick={() => onEdit(recipe)} style={{ width: 32, height: 32, borderRadius: '50%', background: P.yellow, border: `1.8px solid ${P.ink}`, display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
-              <Icon name="pen" size={14} />
-            </div>
-          )}
-          <div onClick={() => toggleSave?.(r.id)} style={{ width: 32, height: 32, borderRadius: '50%', background: isSaved ? P.yellow : 'transparent', border: `1.8px solid ${P.ink}`, display: 'grid', placeItems: 'center', cursor: 'pointer', transition: 'background 0.15s' }}>
-            <Icon name="bookmark" size={15} />
-          </div>
+          {isOwner && <div onClick={() => onEdit(recipe)} style={{ width: 32, height: 32, borderRadius: '50%', background: P.yellow, border: `1.8px solid ${P.ink}`, display: 'grid', placeItems: 'center', cursor: 'pointer' }}><Icon name="pen" size={14} /></div>}
+          <div onClick={() => toggleSave?.(r.id)} style={{ width: 32, height: 32, borderRadius: '50%', background: isSaved ? P.yellow : 'transparent', border: `1.8px solid ${P.ink}`, display: 'grid', placeItems: 'center', cursor: 'pointer', transition: 'background 0.15s' }}><Icon name="bookmark" size={15} /></div>
         </div>
       </div>
 
-      <div style={{ margin: '10px 18px 0', height: 110, borderRadius: 14, overflow: 'hidden', border: `2px solid ${P.ink}`, position: 'relative' }}>
-        <FoodPlaceholder color={r.color || '#E8C36E'} accent={r.accent || P.ink} label={typeof r.id === 'string' && r.id.length < 20 ? r.id : null} />
+      {/* Hero */}
+      <div style={{ margin: '10px 18px 0', height: 100, borderRadius: 14, overflow: 'hidden', border: `2px solid ${P.ink}`, position: 'relative' }}>
+        <RecipeCover url={r.image_url} color={r.color || '#E8C36E'} accent={r.accent || P.ink} />
         <div style={{ position: 'absolute', top: 8, left: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Avatar name={r.author || 'maya'} size={26} />
-          <Sticker bg={P.red} color={P.bg} rotate={-3}>by {r.author || 'maya'}</Sticker>
+          <Avatar name={r.author || 'chef'} size={24} />
+          <Sticker bg={P.red} color={P.bg} rotate={-3} size={9}>by {r.author || 'chef'}</Sticker>
         </div>
         <div style={{ position: 'absolute', bottom: 8, right: 10, display: 'flex', gap: 5 }}>
           <Sticker bg={P.ink} color={P.bg} rotate={2} size={9}>{r.time || '?'}</Sticker>
@@ -1266,95 +1459,141 @@ function CookingScreen({ recipe, user, onNavigate, onDeleted, onEdit, saved, tog
         </div>
       </div>
 
-      <div style={{ padding: '10px 18px 0' }}>
-        <div style={{ font: `800 30px/0.9 'Bricolage Grotesque', sans-serif`, letterSpacing: -1, color: P.ink }}>{(r.title || '').toLowerCase()}</div>
-      </div>
-
-      <div style={{ padding: '12px 18px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, border: `1.8px solid ${P.ink}`, borderRadius: 999, padding: '4px 4px 4px 12px' }}>
-          <Eyebrow style={{ opacity: 0.9 }}>serves</Eyebrow>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div onClick={() => setServes(s => Math.max(1, s - 1))} style={{ width: 26, height: 26, borderRadius: '50%', border: `1.5px solid ${P.ink}`, display: 'grid', placeItems: 'center', cursor: 'pointer' }}><Icon name="minus" size={12} width={2.5} /></div>
-            <span style={{ font: disp(16), minWidth: 14, textAlign: 'center' }}>{serves}</span>
-            <div onClick={() => setServes(s => s + 1)} style={{ width: 26, height: 26, borderRadius: '50%', background: P.red, color: P.bg, display: 'grid', placeItems: 'center', cursor: 'pointer' }}><Icon name="plus" size={12} width={2.5} /></div>
-          </div>
+      {/* Title + serves */}
+      <div style={{ padding: '8px 18px 0', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ font: `800 22px/0.95 'Bricolage Grotesque', sans-serif`, letterSpacing: -0.8, color: P.ink, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(r.title || '').toLowerCase()}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, border: `1.5px solid ${P.ink}`, borderRadius: 999, padding: '3px 3px 3px 9px', flexShrink: 0 }}>
+          <Eyebrow style={{ opacity: 0.8, fontSize: 9 }}>serves</Eyebrow>
+          <div onClick={() => setServes(s => Math.max(1, s - 1))} style={{ width: 22, height: 22, borderRadius: '50%', border: `1.5px solid ${P.ink}`, display: 'grid', placeItems: 'center', cursor: 'pointer' }}><Icon name="minus" size={10} width={2.5} /></div>
+          <span style={{ font: disp(14), minWidth: 12, textAlign: 'center' }}>{serves}</span>
+          <div onClick={() => setServes(s => s + 1)} style={{ width: 22, height: 22, borderRadius: '50%', background: P.red, color: P.bg, display: 'grid', placeItems: 'center', cursor: 'pointer' }}><Icon name="plus" size={10} width={2.5} /></div>
         </div>
-        <div style={{ font: mono(10), opacity: 0.6 }}>{serves === origServings ? 'as written' : `×${(serves / origServings).toFixed(1)} from original`}</div>
       </div>
+    </>
+  );
 
-      {/* Tab row */}
-      <div style={{ padding: '14px 18px 0', display: 'flex', gap: 18, borderBottom: `1.5px solid ${P.ink}22` }}>
-        {['ingredients','steps'].map(tab => (
-          <div key={tab} onClick={() => setActiveTab(tab)} style={{ paddingBottom: 8, font: body(14, activeTab === tab ? 800 : 700), color: P.ink, opacity: activeTab === tab ? 1 : 0.45, borderBottom: activeTab === tab ? `3px solid ${P.red}` : '3px solid transparent', marginBottom: -1.5, cursor: 'pointer' }}>{tab}</div>
-        ))}
-        <div style={{ marginLeft: 'auto', font: mono(10), opacity: 0.6, alignSelf: 'center' }}>step-by-step · on</div>
-      </div>
+  // ── OVERVIEW MODE ─────────────────────────────────────────────────────────
+  if (!cookingMode) {
+    return (
+      <>
+        {topChrome}
 
-      {/* Content */}
-      {!detail ? (
-        <div style={{ padding: '24px 18px', textAlign: 'center', font: mono(11), opacity: 0.45, letterSpacing: 1.5, textTransform: 'uppercase' }}>loading…</div>
-      ) : activeTab === 'ingredients' ? (
-        <div style={{ padding: '14px 18px 20px', overflowY: 'auto', height: 'calc(100% - 360px)' }}>
-          {ingredients.length === 0
-            ? <div style={{ font: body(14), opacity: 0.4 }}>no ingredients listed</div>
-            : ingredients.map((ing, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8, padding: '8px 0', borderBottom: `1px solid ${P.ink}22` }}>
-                <span style={{ font: `700 15px/1.2 'Bricolage Grotesque', sans-serif`, color: P.red }}>{ing.qty}</span>
-                <span style={{ font: body(14) }}>{ing.item}</span>
-              </div>
-            ))
-          }
+        {/* Tab row */}
+        <div style={{ padding: '10px 18px 0', display: 'flex', gap: 18, borderBottom: `1.5px solid ${P.ink}22` }}>
+          {['ingredients','steps'].map(tab => (
+            <div key={tab} onClick={() => setActiveTab(tab)} style={{ paddingBottom: 8, font: body(14, activeTab === tab ? 800 : 700), color: P.ink, opacity: activeTab === tab ? 1 : 0.45, borderBottom: activeTab === tab ? `3px solid ${P.red}` : '3px solid transparent', marginBottom: -1.5, cursor: 'pointer' }}>{tab}</div>
+          ))}
         </div>
-      ) : (
-        <div style={{ padding: '14px 18px 0' }}>
-          <div style={{ background: P.paper, border: `2px solid ${P.ink}`, borderRadius: 16, padding: '16px 16px 18px', boxShadow: `4px 4px 0 ${P.ink}` }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-              <div style={{ font: disp(14), color: P.red, letterSpacing: 0.4, textTransform: 'uppercase' }}>step {String(stepIdx + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}</div>
-              <div style={{ font: mono(10), opacity: 0.6 }}>{stepLabel}</div>
-            </div>
-            {step.text
-              ? <div style={{ font: body(20, 700), lineHeight: 1.2, marginTop: 8, color: P.ink }}>{step.text}</div>
-              : <div style={{ font: body(15, 500), lineHeight: 1.4, marginTop: 8, color: P.ink, opacity: 0.5 }}>no steps added yet</div>
+
+        {/* Content */}
+        {!detail ? (
+          <div style={{ padding: '24px 18px', textAlign: 'center', font: mono(11), opacity: 0.45, letterSpacing: 1.5, textTransform: 'uppercase' }}>loading…</div>
+        ) : activeTab === 'ingredients' ? (
+          <div style={{ padding: '12px 18px 110px', overflowY: 'auto', height: 'calc(100% - 320px)' }}>
+            {ingredients.length === 0
+              ? <div style={{ font: body(14), opacity: 0.4 }}>no ingredients listed</div>
+              : ingredients.map((ing, i) => (
+                <div key={i} style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8, padding: '8px 0', borderBottom: `1px solid ${P.ink}22` }}>
+                  <span style={{ font: `700 15px/1.2 'Bricolage Grotesque', sans-serif`, color: P.red }}>
+                    {serves !== origServings && ing.qty
+                      ? (() => { const n = parseFloat(ing.qty); return isNaN(n) ? ing.qty : (n * serves / origServings).toFixed(n % 1 === 0 ? 0 : 1) + ing.qty.replace(/^[\d.]+/, ''); })()
+                      : ing.qty}
+                  </span>
+                  <span style={{ font: body(14) }}>{ing.item}</span>
+                </div>
+              ))
             }
-            {step.timer > 0 && (
-              <div onClick={handleTimer} style={{ marginTop: 14, display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px', background: timerRunning ? P.red : P.ink, color: P.bg, borderRadius: 999, cursor: 'pointer', transition: 'background 0.15s' }}>
-                <Icon name={timerRunning ? 'pause' : 'play'} size={11} />
-                <span style={{ font: disp(14), fontVariantNumeric: 'tabular-nums' }}>
-                  {String(Math.floor(displayTime / 60)).padStart(2, '0')}:{String(displayTime % 60).padStart(2, '0')}
-                </span>
-                <span style={{ font: mono(9), opacity: 0.7, letterSpacing: 0.5, textTransform: 'uppercase' }}>
-                  {timerRunning ? 'tap to pause' : timerLeft > 0 && timerLeft < step.timer ? 'tap to resume' : 'tap to start'}
-                </span>
+          </div>
+        ) : (
+          <div style={{ padding: '12px 18px 110px', overflowY: 'auto', height: 'calc(100% - 320px)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {steps.length === 0
+              ? <div style={{ font: body(14), opacity: 0.4 }}>no steps yet</div>
+              : steps.map((s, i) => (
+                <div key={i} style={{ display: 'grid', gridTemplateColumns: '24px 1fr', gap: 10, alignItems: 'start', padding: '12px 14px', background: P.paper, border: `1.5px solid ${P.ink}22`, borderRadius: 12 }}>
+                  <span style={{ font: `800 13px/1.5 'Bricolage Grotesque', sans-serif`, color: P.red }}>{i + 1}.</span>
+                  <span style={{ font: body(14), lineHeight: 1.5 }}>{s.text}</span>
+                </div>
+              ))
+            }
+            {isOwner && detail && (
+              <div style={{ marginTop: 4, display: 'flex', justifyContent: 'flex-end' }}>
+                <div onClick={!deleting ? handleDelete : undefined} style={{ font: mono(10), color: confirmDel ? P.bg : P.ink, opacity: confirmDel ? 1 : 0.4, cursor: 'pointer', letterSpacing: 0.5, padding: '6px 12px', borderRadius: 999, background: confirmDel ? P.red : 'transparent', border: `1.5px solid ${confirmDel ? P.red : 'transparent'}`, transition: 'all 0.15s' }}>
+                  {deleting ? 'deleting…' : confirmDel ? 'tap again to confirm' : 'delete recipe'}
+                </div>
               </div>
             )}
           </div>
-          {isOwner && (
-            <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end' }}>
-              <div onClick={!deleting ? handleDelete : undefined} style={{ font: mono(10), color: confirmDel ? P.bg : P.ink, opacity: confirmDel ? 1 : 0.4, cursor: deleting ? 'not-allowed' : 'pointer', letterSpacing: 0.5, padding: '6px 12px', borderRadius: 999, background: confirmDel ? P.red : 'transparent', border: `1.5px solid ${confirmDel ? P.red : 'transparent'}`, transition: 'all 0.15s' }}>
-                {deleting ? 'deleting…' : confirmDel ? 'tap again to confirm' : 'delete recipe'}
-              </div>
+        )}
+
+        {/* Begin cooking CTA */}
+        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '12px 18px 28px', background: P.bg, borderTop: `2px solid ${P.ink}` }}>
+          <div onClick={() => { setCookingMode(true); setStepIdx(0); }} style={{ padding: '15px', background: P.red, color: P.bg, borderRadius: 14, font: disp(20), letterSpacing: -0.4, textAlign: 'center', cursor: 'pointer', boxShadow: `4px 4px 0 ${P.ink}`, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+            begin cooking <Icon name="arrow" size={20} stroke={P.bg} />
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // ── COOKING MODE ──────────────────────────────────────────────────────────
+  return (
+    <>
+      {topChrome}
+
+      {/* Step card */}
+      <div style={{ padding: '10px 18px 110px', overflowY: 'auto', height: 'calc(100% - 280px)' }}>
+        <div style={{ background: P.paper, border: `2px solid ${P.ink}`, borderRadius: 16, padding: '16px 16px 18px', boxShadow: `4px 4px 0 ${P.ink}` }}>
+          {/* Step counter + back-to-overview link */}
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div style={{ font: disp(13), color: P.red, letterSpacing: 0.4, textTransform: 'uppercase' }}>
+              step {String(stepIdx + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}
+            </div>
+            <div onClick={() => setCookingMode(false)} style={{ font: mono(9), opacity: 0.5, cursor: 'pointer', letterSpacing: 0.5, textDecoration: 'underline', userSelect: 'none' }}>view recipe</div>
+          </div>
+
+          {step.text
+            ? <div style={{ font: body(19, 700), lineHeight: 1.25, color: P.ink }}>{step.text}</div>
+            : <div style={{ font: body(15, 500), lineHeight: 1.4, color: P.ink, opacity: 0.5 }}>no steps added yet</div>
+          }
+
+          {/* Timer */}
+          {step.timer > 0 && (
+            <div onClick={handleTimer} style={{ marginTop: 14, display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 14px', background: timerRunning ? P.red : P.ink, color: P.bg, borderRadius: 999, cursor: 'pointer', transition: 'background 0.15s' }}>
+              <Icon name={timerRunning ? 'pause' : 'play'} size={12} />
+              <span style={{ font: disp(14), fontVariantNumeric: 'tabular-nums' }}>
+                {String(Math.floor(displayTime / 60)).padStart(2, '0')}:{String(displayTime % 60).padStart(2, '0')}
+              </span>
+              <span style={{ font: mono(9), opacity: 0.7, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                {timerRunning ? 'pause' : timerLeft > 0 && timerLeft < step.timer ? 'resume' : 'start'}
+              </span>
+            </div>
+          )}
+
+          {/* "I've cooked this!" — shown on last step */}
+          {isLastStep && (
+            <div onClick={handleComplete} style={{ marginTop: 18, padding: '14px 18px', background: P.red, color: P.bg, borderRadius: 14, font: disp(20), letterSpacing: -0.4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, cursor: 'pointer', boxShadow: `4px 4px 0 ${P.ink}`, userSelect: 'none' }}>
+              <Icon name="check" size={20} stroke={P.bg} width={3} />
+              i've cooked this!
             </div>
           )}
         </div>
-      )}
+      </div>
 
-      {/* Step navigation (only in steps tab) */}
-      {activeTab === 'steps' && (
-        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '14px 18px 28px', background: P.bg, borderTop: `2px solid ${P.ink}`, display: 'grid', gridTemplateColumns: '52px 1fr 52px', gap: 10, alignItems: 'center' }}>
-          <div onClick={() => setStepIdx(i => Math.max(0, i - 1))} style={{ height: 52, borderRadius: 14, border: `2px solid ${P.ink}`, display: 'grid', placeItems: 'center', cursor: 'pointer', opacity: stepIdx === 0 ? 0.3 : 1 }}>
-            <Icon name="back" size={20} />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-            <div style={{ display: 'flex', gap: 5 }}>
-              {steps.map((_, i) => <span key={i} onClick={() => setStepIdx(i)} style={{ width: i === stepIdx ? 22 : 8, height: 8, borderRadius: 4, cursor: 'pointer', background: i <= stepIdx ? P.red : `${P.ink}33`, transition: 'width 0.2s ease' }} />)}
-            </div>
-            <div style={{ font: mono(9), opacity: 0.6, letterSpacing: 0.8 }}>{stepIdx + 1} of {total}</div>
-          </div>
-          <div onClick={() => stepIdx < total - 1 ? setStepIdx(i => i + 1) : handleComplete()} style={{ height: 52, borderRadius: 14, background: P.ink, color: P.bg, display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
-            {stepIdx < total - 1 ? <Icon name="arrow" size={20} stroke={P.bg} /> : <Icon name="check" size={20} stroke={P.bg} />}
-          </div>
+      {/* Step navigation */}
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '12px 18px 28px', background: P.bg, borderTop: `2px solid ${P.ink}`, display: 'grid', gridTemplateColumns: '52px 1fr 52px', gap: 10, alignItems: 'center' }}>
+        <div onClick={() => setStepIdx(i => Math.max(0, i - 1))} style={{ height: 52, borderRadius: 14, border: `2px solid ${P.ink}`, display: 'grid', placeItems: 'center', cursor: 'pointer', opacity: stepIdx === 0 ? 0.25 : 1 }}>
+          <Icon name="back" size={20} />
         </div>
-      )}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+          <div style={{ display: 'flex', gap: 5 }}>
+            {steps.map((_, i) => <span key={i} onClick={() => setStepIdx(i)} style={{ width: i === stepIdx ? 22 : 8, height: 8, borderRadius: 4, cursor: 'pointer', background: i <= stepIdx ? P.red : `${P.ink}33`, transition: 'width 0.2s ease' }} />)}
+          </div>
+          <div style={{ font: mono(9), opacity: 0.55, letterSpacing: 0.8 }}>{stepIdx + 1} of {total}</div>
+        </div>
+        <div onClick={() => !isLastStep && setStepIdx(i => i + 1)} style={{ height: 52, borderRadius: 14, background: isLastStep ? `${P.ink}33` : P.ink, color: P.bg, display: 'grid', placeItems: 'center', cursor: isLastStep ? 'default' : 'pointer' }}>
+          <Icon name="arrow" size={20} stroke={isLastStep ? P.ink : P.bg} />
+        </div>
+      </div>
     </>
   );
 }
@@ -1432,7 +1671,7 @@ function DesktopRecipeDetail({ recipe, user, onClose, onDeleted, onEdit, saved, 
 
       <div style={{ flex: 1, overflowY: 'auto' }}>
         <div style={{ height: 160, position: 'relative' }}>
-          <FoodPlaceholder color={recipe.color || '#E8C36E'} accent={recipe.accent || P.ink} label={typeof recipe.id === 'string' && recipe.id.length < 20 ? recipe.id : null} />
+          <RecipeCover url={recipe.image_url} color={recipe.color || '#E8C36E'} accent={recipe.accent || P.ink} />
           <div style={{ position: 'absolute', top: 10, left: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
             <Avatar name={recipe.author || 'chef'} size={26} />
             <Sticker bg={P.red} color={P.bg} rotate={-2} size={10}>by {recipe.author}</Sticker>
@@ -1520,10 +1759,14 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave }) {
   const [editRecipe, setEditRecipe]         = useState(null);
   const [draftRecipe, setDraftRecipe]       = useState(null);
   const [query, setQuery]                   = useState('');
+  const [searchKey, setSearchKey]           = useState(0);
+  const desktopSearchRef                    = useRef(null);
   const username = user?.user_metadata?.username || user?.email?.split('@')[0] || 'you';
 
+  useEffect(() => { if (searchKey > 0) desktopSearchRef.current?.focus(); }, [searchKey]);
+
   function navigate(s) {
-    if (s === 'search') { setScreen('home'); return; }
+    if (s === 'search') { setSearchKey(k => k + 1); setScreen('home'); return; }
     if (s !== 'manual') setDraftRecipe(null);
     setScreen(s);
     if (s === 'home') setEditRecipe(null);
@@ -1603,6 +1846,7 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave }) {
             <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', border: `2px solid ${P.ink}`, borderRadius: 999, boxShadow: `3px 3px 0 ${P.ink}`, maxWidth: 460 }}>
               <Icon name="search" size={17} width={2.2} />
               <input
+                ref={desktopSearchRef}
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 placeholder="noodles, layla, under 30 min…"
@@ -1730,14 +1974,19 @@ function App() {
   const [selectedRecipe, setSelectedRecipe]     = useState(null);
   const [editRecipe, setEditRecipe]             = useState(null);
   const [draftRecipe, setDraftRecipe]           = useState(null);
+  const [recentlyViewed, setRecentlyViewed]     = useState([]);
+  const [searchKey, setSearchKey]               = useState(0);
   const isDesktop                               = useWindowWidth() >= 900;
 
   function navigate(s) {
-    if (s === 'search') { setScreen('home'); return; }
+    if (s === 'search') { setSearchKey(k => k + 1); setScreen('search'); return; }
     if (s !== 'manual') setDraftRecipe(null);
     setScreen(s);
   }
-  function openRecipe(r) { setSelectedRecipe(r); setScreen('cooking'); }
+  function openRecipe(r) {
+    setRecentlyViewed(prev => [r, ...prev.filter(x => x.id !== r.id)].slice(0, 8));
+    setSelectedRecipe(r); setScreen('cooking');
+  }
   function openEdit(r)   { setEditRecipe(r); setScreen('manual'); }
   function afterSaved()  { reload(); setScreen('home'); }
   function afterDeleted(){ setSelectedRecipe(null); reload(); setScreen('home'); }
@@ -1779,7 +2028,7 @@ function App() {
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#1a1815', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <Phone>
-        {(screen === 'home' || screen === 'sheet') && <HomeScreen recipes={recipes} loading={loading} onNavigate={navigate} onOpenRecipe={openRecipe} user={user} saved={saved} toggleSave={toggleSave} />}
+        {(screen === 'home' || screen === 'sheet' || screen === 'search') && <HomeScreen recipes={recipes} loading={loading} onNavigate={navigate} onOpenRecipe={openRecipe} user={user} saved={saved} toggleSave={toggleSave} active={screen} searchKey={searchKey} recentlyViewed={recentlyViewed} />}
         {screen === 'sheet'   && <SheetOverlay onNavigate={navigate} />}
         {screen === 'saved'   && <SavedScreen  onNavigate={navigate} onOpenRecipe={openRecipe} user={user} recipes={recipes} saved={saved} />}
         {screen === 'profile' && <ProfileScreen onNavigate={navigate} onOpenRecipe={openRecipe} user={user} recipes={recipes} />}
