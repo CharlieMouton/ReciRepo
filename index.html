@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>ReciRepo</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
 
@@ -12,9 +12,10 @@
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; background: #1a1815; font-family: 'Hanken Grotesk', system-ui, sans-serif; -webkit-font-smoothing: antialiased; overflow: hidden; }
-    #root { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
-    @media (max-width: 430px) { #root { align-items: stretch; } }
+    html, body { height: 100dvh; background: #1a1815; font-family: 'Hanken Grotesk', system-ui, sans-serif; -webkit-font-smoothing: antialiased; overflow: hidden; }
+    #root { width: 100%; height: 100dvh; display: flex; align-items: center; justify-content: center; }
+    /* On true mobile: stretch so the app shell fills edge-to-edge */
+    @media (max-width: 430px) { #root { align-items: stretch; justify-content: stretch; } }
     input, textarea { font-family: inherit; }
     input::placeholder, textarea::placeholder { opacity: 0.45; }
   </style>
@@ -423,16 +424,20 @@ function TabBar({ active, onNavigate }) {
     { key: 'profile', icon: 'user',     label: 'you'    },
   ];
   return (
-    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '10px 18px 28px', background: P.bg, borderTop: `2px solid ${P.ink}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '10px 0', paddingBottom: 'calc(28px + env(safe-area-inset-bottom, 0px))', background: P.bg, borderTop: `2px solid ${P.ink}`, display: 'flex', alignItems: 'flex-end' }}>
       {items.map(it => it.fab ? (
-        <div key="fab" onClick={() => onNavigate('sheet')} style={{ width: 68, height: 68, borderRadius: '50%', background: P.red, color: P.bg, display: 'grid', placeItems: 'center', marginTop: -42, boxShadow: `4px 4px 0 ${P.ink}`, border: `2.5px solid ${P.ink}`, cursor: 'pointer' }}>
-          <Icon name="plus" size={30} width={3} />
+        <div key="fab" style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+          <div onClick={() => onNavigate('sheet')} style={{ width: 68, height: 68, borderRadius: '50%', background: P.red, color: P.bg, display: 'grid', placeItems: 'center', marginTop: -42, boxShadow: `4px 4px 0 ${P.ink}`, border: `2.5px solid ${P.ink}`, cursor: 'pointer' }}>
+            <Icon name="plus" size={30} width={3} />
+          </div>
         </div>
       ) : (
-        <div key={it.key} onClick={() => onNavigate(it.key)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, color: P.ink, opacity: active === it.key ? 1 : 0.65, cursor: 'pointer', userSelect: 'none' }}>
-          <Icon name={it.icon} size={22} width={active === it.key ? 2.4 : 2} />
-          <span style={{ font: mono(9, active === it.key ? 700 : 500), letterSpacing: 1.2, textTransform: 'uppercase' }}>{it.label}</span>
-          {active === it.key && <span style={{ width: 34, height: 5, background: P.red, borderRadius: 2, marginTop: 2 }} />}
+        <div key={it.key} style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+          <div onClick={() => onNavigate(it.key)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, color: P.ink, opacity: active === it.key ? 1 : 0.65, cursor: 'pointer', userSelect: 'none' }}>
+            <Icon name={it.icon} size={22} width={active === it.key ? 2.4 : 2} />
+            <span style={{ font: mono(9, active === it.key ? 700 : 500), letterSpacing: 1.2, textTransform: 'uppercase' }}>{it.label}</span>
+            {active === it.key && <span style={{ width: 34, height: 5, background: P.red, borderRadius: 2, marginTop: 2 }} />}
+          </div>
         </div>
       ))}
     </div>
@@ -460,21 +465,16 @@ function RecipeCard({ r, onClick }) {
   );
 }
 
-// ── Phone shell ────────────────────────────────────────────────────────────
+// ── Responsive app shell (replaces fake phone chrome) ─────────────────────
 function Phone({ children, dark = false }) {
-  const grain = ['14% 12%','73% 38%','31% 81%','89% 67%'].map(p => `radial-gradient(circle at ${p},rgba(0,0,0,0.04) 0.6px,transparent 1px)`).join(',');
+  const w = useWindowWidth();
   const bg = dark ? P.ink : P.bg;
+  // Show elevation shadow on tablet+ where the column floats on the dark bg
+  const shadow = w > 430 ? '0 30px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.07)' : 'none';
   return (
-    <div style={{ width: 390, height: 844, background: bg, backgroundImage: grain, backgroundSize: '120px 120px,90px 90px,140px 140px,70px 70px', position: 'relative', overflow: 'hidden', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", color: dark ? P.bg : P.ink, borderRadius: 44, boxShadow: '0 40px 100px rgba(0,0,0,0.6),0 0 0 1px rgba(255,255,255,0.06)', flexShrink: 0 }}>
-      <div style={{ height: 44, padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', font: body(14, 600), color: dark ? P.bg : P.ink, pointerEvents: 'none' }}>
-        <span>9:41</span>
-        <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
-          <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end' }}>{[3,5,7,9].map(h => <span key={h} style={{ width: 3, height: h, background: 'currentColor', borderRadius: 1 }} />)}</div>
-          <div style={{ width: 22, height: 11, border: '1.2px solid currentColor', borderRadius: 3, padding: 1.5 }}>
-            <div style={{ width: '70%', height: '100%', background: 'currentColor', borderRadius: 1 }} />
-          </div>
-        </div>
-      </div>
+    <div style={{ width: '100%', maxWidth: 430, height: '100dvh', background: bg, position: 'relative', overflow: 'hidden', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", color: dark ? P.bg : P.ink, boxShadow: shadow }}>
+      {/* 44 px top spacer — all inner calc(100% - Xpx) heights reference this offset */}
+      <div style={{ height: 44, flexShrink: 0 }} />
       {children}
     </div>
   );
@@ -1802,7 +1802,7 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave }) {
   const showDetail = !!selectedRecipe && !['sheet','manual','link','scan'].includes(screen);
 
   return (
-    <div style={{ display: 'flex', width: '100vw', height: '100vh', background: '#1a1815', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', width: '100vw', height: '100dvh', background: '#1a1815', overflow: 'hidden' }}>
 
       {/* Sidebar */}
       <div style={{ width: 240, background: P.bg, borderRight: `2px solid ${P.ink}`, display: 'flex', flexDirection: 'column', padding: '32px 18px 28px', flexShrink: 0 }}>
@@ -1993,7 +1993,7 @@ function App() {
 
   if (user === undefined) {
     return (
-      <div style={{ width: '100vw', height: '100vh', background: '#1a1815', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: '100vw', height: '100dvh', background: '#1a1815', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Phone>
           <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
             <Wordmark size={26} />
@@ -2007,7 +2007,7 @@ function App() {
   if (CONFIGURED && !user) {
     if (isDesktop) {
       return (
-        <div style={{ width: '100vw', height: '100vh', background: '#1a1815', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: '100vw', height: '100dvh', background: '#1a1815', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ width: 420, background: P.bg, border: `2px solid ${P.ink}`, borderRadius: 24, boxShadow: `8px 8px 0 ${P.ink}`, overflow: 'hidden' }}>
             <div style={{ height: 520 }}><AuthScreen /></div>
           </div>
@@ -2015,7 +2015,7 @@ function App() {
       );
     }
     return (
-      <div style={{ width: '100vw', height: '100vh', background: '#1a1815', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: '100vw', height: '100dvh', background: '#1a1815', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Phone><AuthScreen /></Phone>
       </div>
     );
@@ -2026,7 +2026,7 @@ function App() {
   }
 
   return (
-    <div style={{ width: '100vw', height: '100vh', background: '#1a1815', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ width: '100vw', height: '100dvh', background: '#1a1815', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <Phone>
         {(screen === 'home' || screen === 'sheet' || screen === 'search') && <HomeScreen recipes={recipes} loading={loading} onNavigate={navigate} onOpenRecipe={openRecipe} user={user} saved={saved} toggleSave={toggleSave} active={screen} searchKey={searchKey} recentlyViewed={recentlyViewed} />}
         {screen === 'sheet'   && <SheetOverlay onNavigate={navigate} />}
