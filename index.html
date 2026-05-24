@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ReciRepo</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -38,6 +39,8 @@ const SUPABASE_URL      = 'https://ftpeschyehyftqsllarq.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0cGVzY2h5ZWh5ZnRxc2xsYXJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1NTQ1NjQsImV4cCI6MjA5NTEzMDU2NH0.311PuMTEqVZAlRrnwMmf48HezxWFRJWs3-z4MoJKuVo';
 const CONFIGURED = !SUPABASE_URL.includes('YOUR_PROJECT');
 const sb = CONFIGURED ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+// Replace with your free key from ocr.space (current key is the public demo key)
+const OCR_SPACE_KEY = 'helloworld';
 
 // ── Design tokens ──────────────────────────────────────────────────────────
 const P = { bg: '#FCEDE2', ink: '#2F2A2A', red: '#D94F4F', yellow: '#F6C26B', paper: '#F7E0CE' };
@@ -67,6 +70,152 @@ const SAMPLE_DETAIL = {
     { text: 'Plate. Shower with more pecorino and a crack of pepper.',            timer: 0   },
   ],
 };
+
+// ── URL recipe extraction ──────────────────────────────────────────────────
+function parseDuration(iso) {
+  if (!iso) return '';
+  const h = (iso.match(/(\d+)H/) || [])[1];
+  const m = (iso.match(/(\d+)M/) || [])[1];
+  if (h && m) return `${h} h ${m} min`;
+  if (h)      return `${h} h`;
+  if (m)      return `${m} min`;
+  return '';
+}
+
+function parseIngredient(str) {
+  // "2 cups flour" → { qty: "2 cups", item: "flour" }
+  const m = str.match(/^([\d\s¼-¾⅐-⅞\/]+(?:\s+\w+)?)\s+(.+)/);
+  return m ? { qty: m[1].trim(), item: m[2].trim() } : { qty: '', item: str };
+}
+
+async function extractRecipeFromUrl(url) {
+  const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
+  if (!res.ok) throw new Error('could not reach that page');
+  const { contents } = await res.json();
+  if (!contents) throw new Error('empty response from page');
+
+  // Find all JSON-LD blocks
+  const scripts = [...contents.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
+  for (const [, raw] of scripts) {
+    let data;
+    try { data = JSON.parse(raw.trim()); } catch { continue; }
+
+    // Unwrap @graph arrays
+    const candidates = [data, ...(data['@graph'] || [])];
+    const recipe = candidates.find(n =>
+      [].concat(n['@type'] || []).some(t => t === 'Recipe')
+    );
+    if (!recipe) continue;
+
+    // Time: prefer totalTime, else sum cook + prep
+    const timeIso = recipe.totalTime ||
+      (recipe.cookTime && recipe.prepTime ? undefined : recipe.cookTime || recipe.prepTime);
+    let time = parseDuration(timeIso);
+    if (!time && recipe.cookTime && recipe.prepTime) {
+      const mins = s => {
+        if (!s) return 0;
+        const h = Number((s.match(/(\d+)H/) || [0,0])[1]);
+        const m = Number((s.match(/(\d+)M/) || [0,0])[1]);
+        return h * 60 + m;
+      };
+      const total = mins(recipe.cookTime) + mins(recipe.prepTime);
+      time = total >= 60
+        ? `${Math.floor(total/60)} h${total%60 ? ' '+total%60+' min' : ''}`.trim()
+        : `${total} min`;
+    }
+
+    // Servings: may be "4 servings" or just "4"
+    const yieldRaw = [].concat(recipe.recipeYield || [])[0] || '';
+    const servings = parseInt(yieldRaw) || 2;
+
+    // Ingredients
+    const ingredients = (recipe.recipeIngredient || []).map(parseIngredient);
+
+    // Steps: HowToStep array or string array
+    const steps = (recipe.recipeInstructions || []).map(s =>
+      typeof s === 'string' ? s : (s.text || '')
+    ).filter(Boolean);
+
+    return {
+      title:       recipe.name || '',
+      time,
+      servings,
+      ingredients: ingredients.length ? ingredients : [{ qty: '', item: '' }],
+      steps:       steps.length ? steps : [''],
+      tags:        [],
+      source_url:  url,
+    };
+  }
+  return null; // no Recipe JSON-LD found
+}
+
+function parseRecipeText(raw) {
+  const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (!lines.length) return null;
+
+  const isIngHead  = l => /^ingred/i.test(l);
+  const isStepHead = l => /^(instruct|direction|method|steps?|preparation)/i.test(l);
+  const ingStart   = lines.findIndex(isIngHead);
+  const stepStart  = lines.findIndex(isStepHead);
+
+  // Title: everything before the first section header (or just the first line)
+  const firstSection = [ingStart, stepStart].filter(i => i > 0).sort((a, b) => a - b)[0];
+  const title = (firstSection > 0 ? lines.slice(0, firstSection) : lines.slice(0, 1))
+    .filter(l => !isIngHead(l) && !isStepHead(l))
+    .join(' ')
+    .replace(/^#+\s*/, '')
+    .trim();
+
+  const looksLikeIngredient = l => /^[\d¼½¾⅓⅔⅛⅜⅝⅞•\-–*]/.test(l) && l.length < 100;
+  const looksLikeStep       = l => l.length > 40;
+
+  let rawIngredients, rawSteps;
+  if (ingStart >= 0 || stepStart >= 0) {
+    const ingEnd = (stepStart > ingStart && stepStart >= 0) ? stepStart : lines.length;
+    rawIngredients = ingStart  >= 0 ? lines.slice(ingStart  + 1, ingEnd      ).filter(l => !isIngHead(l) && !isStepHead(l)) : [];
+    rawSteps       = stepStart >= 0 ? lines.slice(stepStart + 1, lines.length).filter(l => !isStepHead(l))                   : [];
+  } else {
+    rawIngredients = lines.slice(1).filter(looksLikeIngredient);
+    rawSteps       = lines.slice(1).filter(looksLikeStep);
+  }
+
+  rawSteps = rawSteps.map(s => s.replace(/^\d+[\.\)]\s*/, '').trim()).filter(Boolean);
+  const ingredients = rawIngredients.map(l => parseIngredient(l.replace(/^[•\-–*]\s*/, '')));
+
+  return {
+    title,
+    time:        '',
+    servings:    2,
+    ingredients: ingredients.length ? ingredients : [{ qty: '', item: '' }],
+    steps:       rawSteps.length    ? rawSteps    : [''],
+    tags:        [],
+    source_url:  '',
+  };
+}
+
+async function extractRecipeFromImage(file) {
+  const base64 = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+  const formData = new FormData();
+  formData.append('apikey',              OCR_SPACE_KEY);
+  formData.append('base64Image',         base64);
+  formData.append('language',            'eng');
+  formData.append('isOverlayRequired',   'false');
+  formData.append('detectOrientation',   'true');
+  formData.append('scale',               'true');
+  formData.append('OCREngine',           '2');
+  const res = await fetch('https://api.ocr.space/parse/image', { method: 'POST', body: formData });
+  if (!res.ok) throw new Error('OCR service unavailable');
+  const json = await res.json();
+  if (json.IsErroredOnProcessing) throw new Error(json.ErrorMessage?.[0] || 'OCR failed');
+  const text = (json.ParsedResults || []).map(r => r.ParsedText).join('\n').trim();
+  if (!text) throw new Error('no text found in image');
+  return parseRecipeText(text);
+}
 
 // ── Hooks ──────────────────────────────────────────────────────────────────
 function useAuth() {
@@ -472,7 +621,7 @@ function SheetOverlay({ onNavigate }) {
 // ╭─────────────────────────────────────────────────────────────────────────╮
 // │  Add via link                                                           │
 // ╰─────────────────────────────────────────────────────────────────────────╯
-function LinkScreen({ onNavigate, user, onSaved }) {
+function LinkScreen({ onNavigate, user, onSaved, onExtracted }) {
   const [url, setUrl]         = useState('');
   const [loading, setLoading] = useState(false);
   const [done, setDone]       = useState(false);
@@ -487,6 +636,12 @@ function LinkScreen({ onNavigate, user, onSaved }) {
     try { parsed = new URL(url.trim()); } catch { setError("that doesn't look like a valid URL"); return; }
     setLoading(true); setError('');
     try {
+      const data = await extractRecipeFromUrl(url.trim());
+      if (data && onExtracted) {
+        onExtracted(data);
+        return;
+      }
+      // Fallback: save hostname-only bookmark (no structured data found)
       if (CONFIGURED && user) {
         const hostname = parsed.hostname.replace(/^www\./, '');
         const { error: e } = await sb.from('recipes').insert({
@@ -496,7 +651,7 @@ function LinkScreen({ onNavigate, user, onSaved }) {
         onSaved?.();
       }
       setDone(true);
-    } catch (e) { setError(e.message); }
+    } catch (e) { setError(e.message || 'something went wrong'); }
     finally { setLoading(false); }
   }
 
@@ -545,7 +700,7 @@ function LinkScreen({ onNavigate, user, onSaved }) {
               <span style={{ color: P.red }}>✓</span> recipe saved
             </div>
             <div style={{ font: mono(11), opacity: 0.6, marginTop: 6, letterSpacing: 0.3 }}>
-              {CONFIGURED ? 'added to your feed — full import coming soon.' : 'link captured · connect Supabase to persist it.'}
+              {CONFIGURED ? 'saved as bookmark — couldn\'t read the recipe structure.' : 'link captured · connect Supabase to persist it.'}
             </div>
             <div onClick={() => onNavigate('home')} style={{ marginTop: 14, display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 14px', background: P.ink, color: P.bg, borderRadius: 999, cursor: 'pointer', font: body(13, 700) }}>
               back to feed <Icon name="arrow" size={16} stroke={P.bg} />
@@ -553,7 +708,7 @@ function LinkScreen({ onNavigate, user, onSaved }) {
           </div>
         ) : (
           <div onClick={!loading ? handleFetch : undefined} style={{ marginTop: 20, padding: '16px', background: !url.trim() || loading ? `${P.ink}55` : P.ink, color: P.bg, borderRadius: 14, font: disp(18), letterSpacing: -0.3, textAlign: 'center', cursor: !url.trim() || loading ? 'not-allowed' : 'pointer', boxShadow: !url.trim() || loading ? 'none' : `4px 4px 0 ${P.red}`, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-            {loading ? 'pulling recipe…' : 'fetch recipe'}
+            {loading ? 'reading recipe…' : 'fetch recipe'}
             {!loading && <Icon name="arrow" size={18} stroke={P.bg} />}
           </div>
         )}
@@ -577,7 +732,7 @@ function LinkScreen({ onNavigate, user, onSaved }) {
 // ╭─────────────────────────────────────────────────────────────────────────╮
 // │  Add manual                                                             │
 // ╰─────────────────────────────────────────────────────────────────────────╯
-function ManualScreen({ onNavigate, user, onSaved, editRecipe }) {
+function ManualScreen({ onNavigate, user, onSaved, editRecipe, initialData }) {
   const isEdit = !!editRecipe;
   const [title, setTitle]           = useState('');
   const [timeText, setTimeText]     = useState('');
@@ -588,6 +743,9 @@ function ManualScreen({ onNavigate, user, onSaved, editRecipe }) {
   const [steps, setSteps]           = useState(['']);
   const [saving, setSaving]         = useState(false);
   const [error, setError]           = useState('');
+  const [sourceUrl, setSourceUrl]   = useState('');
+  const [showPaste, setShowPaste]   = useState(false);
+  const [pasteText, setPasteText]   = useState('');
 
   useEffect(() => {
     if (!isEdit || !CONFIGURED) return;
@@ -605,6 +763,17 @@ function ManualScreen({ onNavigate, user, onSaved, editRecipe }) {
     })();
   }, [editRecipe?.id]);
 
+  useEffect(() => {
+    if (!initialData) return;
+    setTitle(initialData.title || '');
+    setTimeText(initialData.time || '');
+    setServings(String(initialData.servings || 2));
+    setTags(initialData.tags || []);
+    setIngred(initialData.ingredients?.length ? initialData.ingredients : [{ qty: '', item: '' }]);
+    setSteps(initialData.steps?.length ? initialData.steps : ['']);
+    setSourceUrl(initialData.source_url || '');
+  }, [initialData]);
+
   function addTag(raw) {
     const t = raw.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
     if (t && !tags.includes(t)) setTags(prev => [...prev, t]);
@@ -615,6 +784,17 @@ function ManualScreen({ onNavigate, user, onSaved, editRecipe }) {
   function removeIngred(i) { setIngred(prev => prev.filter((_, idx) => idx !== i)); }
   function updateStep(i, val) { setSteps(prev => prev.map((s, idx) => idx === i ? val : s)); }
   function removeStep(i) { setSteps(prev => prev.filter((_, idx) => idx !== i)); }
+
+  function handleSmartPaste() {
+    const data = parseRecipeText(pasteText);
+    if (!data) return;
+    if (data.title)                                 setTitle(data.title);
+    if (data.time)                                  setTimeText(data.time);
+    if (data.ingredients.some(i => i.item))         setIngred(data.ingredients);
+    if (data.steps.some(s => s))                    setSteps(data.steps);
+    setShowPaste(false);
+    setPasteText('');
+  }
 
   async function handleSave() {
     if (!title.trim()) { setError('add a title first'); return; }
@@ -632,7 +812,7 @@ function ManualScreen({ onNavigate, user, onSaved, editRecipe }) {
             sb.from('steps').delete().eq('recipe_id', recipeId),
           ]);
         } else {
-          const { data: recipe, error: e1 } = await sb.from('recipes').insert({ title: title.trim(), author_id: user.id, time_text: timeText, servings: parseInt(servings) || 2, color: '#E8C36E', accent: '#2F2A2A' }).select().single();
+          const { data: recipe, error: e1 } = await sb.from('recipes').insert({ title: title.trim(), author_id: user.id, time_text: timeText, servings: parseInt(servings) || 2, color: '#E8C36E', accent: '#2F2A2A', ...(sourceUrl ? { source_url: sourceUrl } : {}) }).select().single();
           if (e1) throw e1;
           recipeId = recipe.id;
         }
@@ -668,6 +848,29 @@ function ManualScreen({ onNavigate, user, onSaved, editRecipe }) {
       {error && <div style={{ margin: '6px 18px 0', font: mono(11), color: P.red }}>{error}</div>}
 
       <div style={{ padding: '12px 18px 24px', overflowY: 'auto', height: 'calc(100% - 56px)' }}>
+        {/* Smart paste helper */}
+        <div style={{ marginBottom: 14, border: `1.5px solid ${P.ink}22`, borderRadius: 12, overflow: 'hidden' }}>
+          <div onClick={() => setShowPaste(v => !v)} style={{ padding: '9px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', font: mono(11), opacity: 0.55, letterSpacing: 0.3, userSelect: 'none' }}>
+            <span>paste recipe text</span>
+            <span style={{ fontSize: 9 }}>{showPaste ? '▲' : '▼'}</span>
+          </div>
+          {showPaste && (
+            <div style={{ padding: '0 12px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <textarea
+                value={pasteText}
+                onChange={e => setPasteText(e.target.value)}
+                placeholder="Paste recipe text here — title, ingredients, steps, anything…"
+                rows={6}
+                style={{ width: '100%', padding: '10px 12px', font: mono(12), color: P.ink, background: P.bg, border: `1.8px solid ${P.ink}`, borderRadius: 10, outline: 'none', resize: 'vertical', lineHeight: 1.5, fontFamily: "'IBM Plex Mono', monospace" }}
+              />
+              <div onClick={pasteText.trim() ? handleSmartPaste : undefined}
+                   style={{ padding: '10px 16px', background: pasteText.trim() ? P.ink : `${P.ink}55`, color: P.bg, borderRadius: 10, font: body(13, 700), cursor: pasteText.trim() ? 'pointer' : 'not-allowed', textAlign: 'center' }}>
+                extract fields
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Cover slot */}
         <div style={{ height: 120, borderRadius: 14, border: `2px dashed ${P.ink}`, background: P.paper, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
           <div style={{ width: 40, height: 40, background: P.yellow, borderRadius: '50%', border: `1.8px solid ${P.ink}`, display: 'grid', placeItems: 'center', transform: 'rotate(-2deg)' }}>
@@ -828,62 +1031,116 @@ function ProfileScreen({ onNavigate, onOpenRecipe, user, recipes }) {
 // ╭─────────────────────────────────────────────────────────────────────────╮
 // │  Scan screen                                                            │
 // ╰─────────────────────────────────────────────────────────────────────────╯
-function ScanScreen({ onNavigate }) {
-  const corners = ['tl','tr','bl','br'];
-  const pos = { tl:{top:14,left:14}, tr:{top:14,right:14}, bl:{bottom:14,left:14}, br:{bottom:14,right:14} };
-  const sides = {
-    tl: { borderTop: `3px solid ${P.yellow}`, borderLeft: `3px solid ${P.yellow}` },
-    tr: { borderTop: `3px solid ${P.yellow}`, borderRight: `3px solid ${P.yellow}` },
-    bl: { borderBottom: `3px solid ${P.yellow}`, borderLeft: `3px solid ${P.yellow}` },
-    br: { borderBottom: `3px solid ${P.yellow}`, borderRight: `3px solid ${P.yellow}` },
-  };
+function ScanScreen({ onNavigate, onExtracted }) {
+  const [phase, setPhase]     = useState('idle');   // 'idle' | 'preview' | 'loading'
+  const [file, setFile]       = useState(null);
+  const [preview, setPreview] = useState('');
+  const [error, setError]     = useState('');
+  const cameraRef             = useRef(null);
+  const galleryRef            = useRef(null);
+
+  function handleFile(e) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setFile(f);
+    setPreview(URL.createObjectURL(f));
+    setPhase('preview');
+    setError('');
+    // Reset input so same file can be re-selected
+    e.target.value = '';
+  }
+
+  async function handleRead() {
+    if (!file) return;
+    setPhase('loading'); setError('');
+    try {
+      const data = await extractRecipeFromImage(file);
+      if (!data || (!data.title && !data.ingredients?.some(i => i.item))) {
+        throw new Error("couldn't find a recipe in that image — try a clearer shot");
+      }
+      onExtracted?.(data);
+    } catch (e) {
+      setError(e.message || 'something went wrong');
+      setPhase('preview');
+    }
+  }
+
   return (
-    <div style={{ position: 'absolute', inset: 0, background: P.ink, color: P.bg, display: 'flex', flexDirection: 'column' }}>
-      <div style={{ padding: '50px 18px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div onClick={() => onNavigate('sheet')} style={{ width: 32, height: 32, borderRadius: '50%', border: `1.8px solid ${P.bg}`, display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
-          <Icon name="close" size={16} stroke={P.bg} />
+    <>
+      {/* Hidden file inputs */}
+      <input ref={cameraRef}  type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleFile} />
+      <input ref={galleryRef} type="file" accept="image/*"                       style={{ display: 'none' }} onChange={handleFile} />
+
+      <div style={{ padding: '4px 18px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div onClick={() => onNavigate('sheet')} style={{ width: 32, height: 32, borderRadius: '50%', border: `1.8px solid ${P.ink}`, display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
+          <Icon name="back" size={16} />
         </div>
-        <div style={{ font: disp(17) }}>snap it</div>
-        <div style={{ width: 32, height: 32, borderRadius: '50%', border: `1.8px solid ${P.bg}`, display: 'grid', placeItems: 'center' }}>
-          <Icon name="flash" size={16} stroke={P.bg} />
-        </div>
+        <Eyebrow>add · from a photo</Eyebrow>
+        <div style={{ width: 32 }} />
       </div>
-      <div style={{ flex: 1, position: 'relative', margin: '14px 18px', borderRadius: 18, overflow: 'hidden', border: `2px solid ${P.bg}` }}>
-        <FoodPlaceholder color="#8E4A1E" accent={P.bg} label="viewfinder · cookbook page" />
-        {corners.map(c => <div key={c} style={{ position: 'absolute', width: 26, height: 26, ...pos[c], ...sides[c] }} />)}
-        <div style={{ position: 'absolute', top: 22, left: '50%', transform: 'translateX(-50%)', whiteSpace: 'nowrap' }}>
-          <Sticker bg={P.yellow} color={P.ink} rotate={-2} size={11}><Icon name="sparkle" size={10} width={2.5} />&nbsp;recipe spotted</Sticker>
+
+      <div style={{ padding: '24px 20px 0', display: 'flex', flexDirection: 'column', gap: 0 }}>
+        <div style={{ font: `800 32px/0.9 'Bricolage Grotesque', sans-serif`, letterSpacing: -1.2, color: P.ink }}>
+          snap a{' '}
+          <span style={{ position: 'relative', display: 'inline-block' }}>
+            recipe
+            <span style={{ position: 'absolute', left: -2, right: -2, bottom: -3, height: 7, background: P.red, zIndex: -1, transform: 'rotate(-1deg)' }} />
+          </span>.
         </div>
-        <div style={{ position: 'absolute', left: 22, bottom: 22, display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {['title · "miso glazed eggplant"','ingredients · 7 found','method · 4 steps'].map(t => (
-            <div key={t} style={{ font: mono(11, 500), color: P.bg, padding: '4px 8px', background: 'rgba(0,0,0,0.55)', borderRadius: 4, width: 'fit-content' }}>
-              <span style={{ color: P.yellow }}>✓</span> {t}
+        <div style={{ marginTop: 8, font: mono(11), opacity: 0.55, letterSpacing: 0.3 }}>
+          cookbook page, recipe card, screenshot — we'll read it.
+        </div>
+
+        {error && <div style={{ marginTop: 12, font: mono(11), color: P.red, letterSpacing: 0.2 }}>{error}</div>}
+
+        {phase === 'idle' && (
+          <>
+            {/* Dashed drop zone */}
+            <div style={{ marginTop: 24, height: 180, borderRadius: 18, border: `2px dashed ${P.ink}`, background: P.paper, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+              <div style={{ width: 52, height: 52, background: P.yellow, borderRadius: '50%', border: `1.8px solid ${P.ink}`, display: 'grid', placeItems: 'center', transform: 'rotate(-3deg)' }}>
+                <Icon name="camera" size={24} />
+              </div>
+              <div style={{ font: mono(11), letterSpacing: 0.8, textTransform: 'uppercase', opacity: 0.55 }}>choose or snap a photo</div>
             </div>
-          ))}
-        </div>
-      </div>
-      <div style={{ padding: '0 18px 10px' }}>
-        <div style={{ font: mono(10), color: P.bg, opacity: 0.6, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 7 }}>recent scans</div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          {['#E89B5A','#C2562E','#6B7A3E','#D94F4F'].map((c, i) => (
-            <div key={i} style={{ width: 50, height: 50, borderRadius: 8, overflow: 'hidden', border: `1.5px solid ${P.bg}` }}>
-              <FoodPlaceholder color={c} accent={P.bg} stripes={false} />
+
+            {/* Buttons */}
+            <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div onClick={() => cameraRef.current?.click()} style={{ padding: '15px', background: P.ink, color: P.bg, borderRadius: 14, font: disp(18), letterSpacing: -0.3, textAlign: 'center', cursor: 'pointer', boxShadow: `4px 4px 0 ${P.red}`, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                <Icon name="camera" size={18} stroke={P.bg} /> take a photo
+              </div>
+              <div onClick={() => galleryRef.current?.click()} style={{ padding: '13px', background: 'transparent', color: P.ink, border: `2px solid ${P.ink}`, borderRadius: 14, font: body(15, 700), textAlign: 'center', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                <Icon name="gallery" size={18} /> choose from library
+              </div>
             </div>
-          ))}
-        </div>
+          </>
+        )}
+
+        {(phase === 'preview' || phase === 'loading') && (
+          <>
+            {/* Image preview */}
+            <div style={{ marginTop: 20, borderRadius: 14, overflow: 'hidden', border: `2px solid ${P.ink}`, height: 200 }}>
+              <img src={preview} alt="recipe" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+            </div>
+            <div style={{ marginTop: 8, font: mono(11), opacity: 0.5, letterSpacing: 0.3 }}>
+              {file?.name || 'selected image'}
+            </div>
+
+            {/* Actions */}
+            <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div onClick={phase === 'loading' ? undefined : handleRead}
+                   style={{ padding: '15px', background: phase === 'loading' ? `${P.ink}55` : P.ink, color: P.bg, borderRadius: 14, font: disp(18), letterSpacing: -0.3, textAlign: 'center', cursor: phase === 'loading' ? 'not-allowed' : 'pointer', boxShadow: phase === 'loading' ? 'none' : `4px 4px 0 ${P.red}`, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                {phase === 'loading' ? 'reading image…' : <>read recipe <Icon name="arrow" size={18} stroke={P.bg} /></>}
+              </div>
+              {phase !== 'loading' && (
+                <div onClick={() => galleryRef.current?.click()} style={{ padding: '12px', background: 'transparent', color: P.ink, border: `2px solid ${P.ink}33`, borderRadius: 14, font: body(14, 600), textAlign: 'center', cursor: 'pointer' }}>
+                  choose another
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </div>
-      <div style={{ padding: '14px 18px 44px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ width: 44, height: 44, borderRadius: 10, background: 'rgba(255,255,255,0.08)', display: 'grid', placeItems: 'center' }}>
-          <Icon name="gallery" size={20} stroke={P.bg} />
-        </div>
-        <div style={{ width: 72, height: 72, borderRadius: '50%', background: P.red, border: `4px solid ${P.bg}`, boxShadow: `0 0 0 4px ${P.red}`, display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
-          <div style={{ width: 50, height: 50, borderRadius: '50%', background: P.bg }} />
-        </div>
-        <div style={{ width: 44, height: 44, borderRadius: 10, background: 'rgba(255,255,255,0.08)', display: 'grid', placeItems: 'center' }}>
-          <Icon name="flip" size={20} stroke={P.bg} />
-        </div>
-      </div>
-    </div>
+    </>
   );
 }
 
@@ -1261,16 +1518,18 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave }) {
   const [screen, setScreen]                 = useState('home');
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [editRecipe, setEditRecipe]         = useState(null);
+  const [draftRecipe, setDraftRecipe]       = useState(null);
   const [query, setQuery]                   = useState('');
   const username = user?.user_metadata?.username || user?.email?.split('@')[0] || 'you';
 
   function navigate(s) {
     if (s === 'search') { setScreen('home'); return; }
+    if (s !== 'manual') setDraftRecipe(null);
     setScreen(s);
     if (s === 'home') setEditRecipe(null);
   }
   function openEdit(r)    { setEditRecipe(r); setScreen('manual'); }
-  function afterSaved()   { reload(); setScreen('home'); setEditRecipe(null); }
+  function afterSaved()   { reload(); setScreen('home'); setEditRecipe(null); setDraftRecipe(null); }
   function afterDeleted() { setSelectedRecipe(null); reload(); }
 
   const q = query.trim().toLowerCase();
@@ -1444,9 +1703,9 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave }) {
           </div>
         )}
 
-        {screen === 'manual' && <ManualScreen onNavigate={navigate} user={user} editRecipe={editRecipe} onSaved={() => { setEditRecipe(null); afterSaved(); }} />}
-        {screen === 'link'   && <LinkScreen   onNavigate={navigate} user={user} onSaved={reload} />}
-        {screen === 'scan'   && <ScanScreen   onNavigate={navigate} />}
+        {screen === 'manual' && <ManualScreen onNavigate={navigate} user={user} editRecipe={editRecipe} initialData={draftRecipe} onSaved={() => { setDraftRecipe(null); setEditRecipe(null); afterSaved(); }} />}
+        {screen === 'link'   && <LinkScreen   onNavigate={navigate} user={user} onSaved={reload} onExtracted={data => { setDraftRecipe(data); setScreen('manual'); }} />}
+        {screen === 'scan'   && <ScanScreen   onNavigate={navigate} onExtracted={data => { setDraftRecipe(data); setScreen('manual'); }} />}
       </div>
       </div>
 
@@ -1470,10 +1729,12 @@ function App() {
   const [screen, setScreen]                     = useState('home');
   const [selectedRecipe, setSelectedRecipe]     = useState(null);
   const [editRecipe, setEditRecipe]             = useState(null);
+  const [draftRecipe, setDraftRecipe]           = useState(null);
   const isDesktop                               = useWindowWidth() >= 900;
 
   function navigate(s) {
     if (s === 'search') { setScreen('home'); return; }
+    if (s !== 'manual') setDraftRecipe(null);
     setScreen(s);
   }
   function openRecipe(r) { setSelectedRecipe(r); setScreen('cooking'); }
@@ -1522,9 +1783,9 @@ function App() {
         {screen === 'sheet'   && <SheetOverlay onNavigate={navigate} />}
         {screen === 'saved'   && <SavedScreen  onNavigate={navigate} onOpenRecipe={openRecipe} user={user} recipes={recipes} saved={saved} />}
         {screen === 'profile' && <ProfileScreen onNavigate={navigate} onOpenRecipe={openRecipe} user={user} recipes={recipes} />}
-        {screen === 'manual'  && <ManualScreen onNavigate={navigate} user={user} editRecipe={editRecipe} onSaved={() => { setEditRecipe(null); afterSaved(); }} />}
-        {screen === 'link'    && <LinkScreen   onNavigate={navigate} user={user} onSaved={reload} />}
-        {screen === 'scan'    && <ScanScreen   onNavigate={navigate} />}
+        {screen === 'manual'  && <ManualScreen onNavigate={navigate} user={user} editRecipe={editRecipe} initialData={draftRecipe} onSaved={() => { setDraftRecipe(null); setEditRecipe(null); afterSaved(); }} />}
+        {screen === 'link'    && <LinkScreen   onNavigate={navigate} user={user} onSaved={reload} onExtracted={data => { setDraftRecipe(data); setScreen('manual'); }} />}
+        {screen === 'scan'    && <ScanScreen   onNavigate={navigate} onExtracted={data => { setDraftRecipe(data); setScreen('manual'); }} />}
         {screen === 'cooking' && <CookingScreen recipe={selectedRecipe} user={user} onNavigate={navigate} onDeleted={afterDeleted} onEdit={openEdit} saved={saved} toggleSave={toggleSave} />}
       </Phone>
     </div>
