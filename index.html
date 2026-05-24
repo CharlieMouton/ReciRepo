@@ -601,47 +601,77 @@ function AuthScreen() {
     finally { setLoading(false); }
   }
 
+  // Slight tilts to make the grid feel organic
+  const rots = [-0.7, 0.5, 0.6, -0.4];
+
   return (
-    <div style={{ padding: '0 26px', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 0 }}>
-      <Wordmark size={28} />
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', background: P.bg }}>
 
-      <div style={{ marginTop: 28, font: `800 34px/0.9 'Bricolage Grotesque', sans-serif`, letterSpacing: -1.2, color: P.ink }}>
-        {tab === 'signin' ? <>welcome<br/>back.</> : <>join the<br/>table.</>}
+      {/* ── Recipe preview grid ───────────────────────────────────────────── */}
+      <div style={{ position: 'relative', flexShrink: 0, padding: '50px 14px 0' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, pointerEvents: 'none', userSelect: 'none' }}>
+          {SAMPLE_RECIPES.slice(0, 4).map((r, i) => (
+            <div key={r.id} style={{ borderRadius: 12, overflow: 'hidden', border: `1.5px solid ${P.ink}`, height: 96, boxShadow: `2px 2px 0 ${P.ink}`, transform: `rotate(${rots[i]}deg)` }}>
+              <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                <RecipeCover url={r.image_url} color={r.color} accent={r.accent} />
+                {/* Caption overlay */}
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '22px 8px 7px', background: 'linear-gradient(transparent, rgba(0,0,0,0.62))' }}>
+                  <div style={{ font: `700 11px/1.2 'Bricolage Grotesque', sans-serif`, color: '#fff', letterSpacing: -0.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</div>
+                  <div style={{ font: `500 9px/1 'IBM Plex Mono', monospace`, color: 'rgba(255,255,255,0.7)', letterSpacing: 0.3, marginTop: 2 }}>by {r.author} · {r.time}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        {/* Fade out into the form below */}
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 52, background: `linear-gradient(to bottom, transparent, ${P.bg})`, pointerEvents: 'none' }} />
       </div>
 
-      {/* Tabs */}
-      <div style={{ marginTop: 26, display: 'flex', border: `2px solid ${P.ink}`, borderRadius: 12, overflow: 'hidden' }}>
-        {[['signin','sign in'],['signup','sign up']].map(([t, label]) => (
-          <div key={t} onClick={() => { setTab(t); setError(''); }} style={{ flex: 1, padding: '10px 0', textAlign: 'center', font: body(13, tab === t ? 800 : 600), background: tab === t ? P.ink : 'transparent', color: tab === t ? P.bg : P.ink, cursor: 'pointer', userSelect: 'none' }}>{label}</div>
-        ))}
+      {/* Wordmark — floats over the top-left of the preview grid */}
+      <div style={{ position: 'absolute', top: 14, left: 16, zIndex: 2 }}>
+        <Wordmark size={20} />
       </div>
 
-      {/* Fields */}
-      <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {tab === 'signup' && (
+      {/* ── Auth form ─────────────────────────────────────────────────────── */}
+      <div style={{ flex: 1, padding: '8px 26px 24px', overflowY: 'auto' }}>
+        <div style={{ font: `800 30px/0.9 'Bricolage Grotesque', sans-serif`, letterSpacing: -1.2, color: P.ink }}>
+          {tab === 'signin' ? <>welcome<br/>back.</> : <>join the<br/>table.</>}
+        </div>
+
+        {/* Tabs */}
+        <div style={{ marginTop: 16, display: 'flex', border: `2px solid ${P.ink}`, borderRadius: 12, overflow: 'hidden' }}>
+          {[['signin','sign in'],['signup','sign up']].map(([t, label]) => (
+            <div key={t} onClick={() => { setTab(t); setError(''); }} style={{ flex: 1, padding: '10px 0', textAlign: 'center', font: body(13, tab === t ? 800 : 600), background: tab === t ? P.ink : 'transparent', color: tab === t ? P.bg : P.ink, cursor: 'pointer', userSelect: 'none' }}>{label}</div>
+          ))}
+        </div>
+
+        {/* Fields */}
+        <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {tab === 'signup' && (
+            <div>
+              <Eyebrow>username</Eyebrow>
+              <input value={username} onChange={e => setUname(e.target.value)} placeholder="your_name" style={inputStyle()} />
+            </div>
+          )}
           <div>
-            <Eyebrow>username</Eyebrow>
-            <input value={username} onChange={e => setUname(e.target.value)} placeholder="your_name" style={inputStyle()} />
+            <Eyebrow>email</Eyebrow>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" style={inputStyle()} />
           </div>
-        )}
-        <div>
-          <Eyebrow>email</Eyebrow>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" style={inputStyle()} />
+          <div>
+            <Eyebrow>password</Eyebrow>
+            <input type="password" value={password} onChange={e => setPass(e.target.value)} placeholder="••••••••" onKeyDown={e => e.key === 'Enter' && submit()} style={inputStyle()} />
+          </div>
         </div>
-        <div>
-          <Eyebrow>password</Eyebrow>
-          <input type="password" value={password} onChange={e => setPass(e.target.value)} placeholder="••••••••" onKeyDown={e => e.key === 'Enter' && submit()} style={inputStyle()} />
+
+        {error && <div style={{ marginTop: 8, font: mono(11), color: P.red, letterSpacing: 0.2 }}>{error}</div>}
+
+        <div onClick={!loading ? submit : undefined} style={{ marginTop: 16, padding: '15px', background: loading ? `${P.ink}88` : P.ink, color: P.bg, borderRadius: 14, font: disp(18), letterSpacing: -0.3, textAlign: 'center', cursor: loading ? 'not-allowed' : 'pointer', boxShadow: loading ? 'none' : `4px 4px 0 ${P.red}`, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+          {loading ? 'one moment…' : tab === 'signin' ? 'sign in' : 'create account'}
+          {!loading && <Icon name="arrow" size={18} stroke={P.bg} />}
         </div>
+
+        {tab === 'signup' && <div style={{ marginTop: 10, font: mono(10), opacity: 0.5, textAlign: 'center', letterSpacing: 0.3 }}>check your inbox to confirm your email</div>}
       </div>
-
-      {error && <div style={{ marginTop: 10, font: mono(11), color: P.red, letterSpacing: 0.2 }}>{error}</div>}
-
-      <div onClick={!loading ? submit : undefined} style={{ marginTop: 20, padding: '16px', background: loading ? `${P.ink}88` : P.ink, color: P.bg, borderRadius: 14, font: disp(18), letterSpacing: -0.3, textAlign: 'center', cursor: loading ? 'not-allowed' : 'pointer', boxShadow: loading ? 'none' : `4px 4px 0 ${P.red}`, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-        {loading ? 'one moment…' : tab === 'signin' ? 'sign in' : 'create account'}
-        {!loading && <Icon name="arrow" size={18} stroke={P.bg} />}
-      </div>
-
-      {tab === 'signup' && <div style={{ marginTop: 12, font: mono(10), opacity: 0.5, textAlign: 'center', letterSpacing: 0.3 }}>check your inbox to confirm your email</div>}
     </div>
   );
 }
