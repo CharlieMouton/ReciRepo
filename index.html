@@ -52,7 +52,7 @@ const body = (sz, w = 500) => `${w} ${sz}px/1.35 'Hanken Grotesk', sans-serif`;
 // ── Sample data (shown when Supabase is not yet configured) ────────────────
 const SAMPLE_RECIPES = [
   { id: 'cacio',  title: 'Cacio e Pepe',               author: 'maya',   time: '20 min', servings: 2,  tags: ['pasta','weeknight'],  color: '#E8C36E', accent: '#2F2A2A', cooks: 14,
-    image_url: 'https://images.unsplash.com/photo-1473093226555-0f74d1e3571e?w=400&h=300&fit=crop',
+    image_url: 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=400&h=300&fit=crop',
     ingredients: [{ qty: '200g', item: 'spaghetti' }, { qty: '2 tsp', item: 'cracked black pepper' }, { qty: '60g', item: 'Pecorino Romano' }, { qty: '30g', item: 'Parmigiano Reggiano' }] },
   { id: 'eggs',   title: 'Chili crisp eggs over rice',  author: 'daniel', time: '12 min', servings: 1,  tags: ['breakfast','spicy'],  color: '#C2562E', accent: '#FCEDE2', cooks: 31,
     image_url: 'https://images.unsplash.com/photo-1525351484163-7529414344d8?w=400&h=300&fit=crop',
@@ -633,7 +633,7 @@ function AuthScreen() {
       </div>
 
       {/* ── Auth form ─────────────────────────────────────────────────────── */}
-      <div style={{ flex: 1, padding: '8px 26px 24px', overflowY: 'auto' }}>
+      <div style={{ flex: 1, padding: '22px 26px 24px', overflowY: 'auto' }}>
         <div style={{ font: `800 30px/0.9 'Bricolage Grotesque', sans-serif`, letterSpacing: -1.2, color: P.ink }}>
           {tab === 'signin' ? <>welcome<br/>back.</> : <>join the<br/>table.</>}
         </div>
