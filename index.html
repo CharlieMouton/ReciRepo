@@ -252,7 +252,10 @@ function useRecipes() {
       const { data } = await sb.from('recipes_with_meta').select('*').order('created_at', { ascending: false });
       setRecipes(
         data && data.length
-          ? data.map(r => ({ id: r.id, title: r.title, author: r.author_username, author_id: r.author_id, time: r.time_text || '?', servings: r.servings || 2, tags: r.tags || [], color: r.color, accent: r.accent, cooks: Number(r.cook_count) || 0, image_url: r.image_url || null }))
+          ? data.map(r => {
+              const isLink = !!r.source_url && !r.time_text;
+              return { id: r.id, title: r.title, author: r.author_username, author_id: r.author_id, time: r.time_text || '?', servings: r.servings || 2, tags: r.tags || [], color: r.color, accent: r.accent, cooks: Number(r.cook_count) || 0, image_url: r.image_url || null, source_url: r.source_url || null, is_link: isLink };
+            })
           : SAMPLE_RECIPES
       );
     } catch { setRecipes(SAMPLE_RECIPES); }
@@ -307,6 +310,7 @@ function Icon({ name, size = 20, stroke = 'currentColor', width = 2, style }) {
     case 'flash':    return <svg {...p}><path d="M13 3L4 14h7l-1 7 9-11h-7l1-7z"/></svg>;
     case 'gallery':  return <svg {...p}><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="M21 17l-5-6-5 5-3-3-5 5"/></svg>;
     case 'flip':     return <svg {...p}><path d="M21 4v6h-6"/><path d="M3 20v-6h6"/><path d="M21 10A9 9 0 005 7M3 14a9 9 0 0016 3"/></svg>;
+    case 'external': return <svg {...p}><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><path d="M15 3h6v6"/><path d="M10 14L21 3"/></svg>;
     default: return null;
   }
 }
@@ -444,8 +448,42 @@ function TabBar({ active, onNavigate }) {
   );
 }
 
+// ── Link-only recipe card (no structured data, just a URL bookmark) ────────
+function LinkOnlyCard({ r, onClick }) {
+  const hostname = (() => { try { return new URL(r.source_url).hostname.replace(/^www\./, ''); } catch { return r.source_url || 'link'; } })();
+  function openLink(e) {
+    e.stopPropagation();
+    window.open(r.source_url, '_blank', 'noopener,noreferrer');
+  }
+  return (
+    <div onClick={onClick} style={{ display: 'grid', gridTemplateColumns: '1fr 92px', gap: 12, padding: 10, background: P.bg, border: `2px solid ${P.ink}`, borderRadius: 12, boxShadow: `3px 3px 0 ${P.ink}`, alignItems: 'stretch', cursor: onClick ? 'pointer' : 'default', WebkitTapHighlightColor: 'transparent' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minWidth: 0 }}>
+        <div>
+          <div style={{ font: disp(18), letterSpacing: -0.5, color: P.ink, marginBottom: 4 }}>{r.title}</div>
+          <div style={{ font: mono(10), color: P.ink, opacity: 0.55, letterSpacing: 0.6, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Icon name="external" size={11} width={2} style={{ flexShrink: 0 }} />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>from {hostname}</span>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 6 }}>
+          {(r.tags || []).map((t, i) => <Sticker key={t} bg={i % 2 ? P.yellow : P.red} color={P.ink} rotate={i % 2 ? 2 : -3} size={9}>{t}</Sticker>)}
+          {r.cooks > 0 && <Sticker bg={P.ink} color={P.bg} rotate={0} size={9}>×{r.cooks} cooks</Sticker>}
+        </div>
+      </div>
+      {/* Right: link-out button instead of a cover image */}
+      <div onClick={openLink} style={{ borderRadius: 8, border: `1.5px dashed ${P.ink}55`, background: P.paper, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer', padding: '8px 4px' }}>
+        <div style={{ width: 36, height: 36, borderRadius: '50%', background: P.ink, display: 'grid', placeItems: 'center' }}>
+          <Icon name="external" size={18} stroke={P.bg} width={2} />
+        </div>
+        <span style={{ font: mono(9), letterSpacing: 0.3, color: P.ink, opacity: 0.5, textAlign: 'center', maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{hostname}</span>
+      </div>
+    </div>
+  );
+}
+
 // ── Recipe card ────────────────────────────────────────────────────────────
 function RecipeCard({ r, onClick }) {
+  if (r.is_link) return <LinkOnlyCard r={r} onClick={onClick} />;
   return (
     <div onClick={onClick} style={{ display: 'grid', gridTemplateColumns: '1fr 92px', gap: 12, padding: 10, background: P.bg, border: `2px solid ${P.ink}`, borderRadius: 12, boxShadow: `3px 3px 0 ${P.ink}`, alignItems: 'stretch', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
       <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minWidth: 0 }}>
@@ -775,37 +813,54 @@ function SheetOverlay({ onNavigate }) {
 // │  Add via link                                                           │
 // ╰─────────────────────────────────────────────────────────────────────────╯
 function LinkScreen({ onNavigate, user, onSaved, onExtracted }) {
-  const [url, setUrl]         = useState('');
-  const [loading, setLoading] = useState(false);
-  const [done, setDone]       = useState(false);
-  const [error, setError]     = useState('');
-  const inputRef = useRef(null);
+  const [url, setUrl]               = useState('');
+  const [loading, setLoading]       = useState(false);
+  const [done, setDone]             = useState(false);
+  const [error, setError]           = useState('');
+  const [fallback, setFallback]     = useState(null); // { hostname, url } when extraction fails
+  const [fallbackName, setFallbackName] = useState('');
+  const [saving, setSaving]         = useState(false);
+  const inputRef    = useRef(null);
+  const nameRef     = useRef(null);
 
   useEffect(() => { setTimeout(() => inputRef.current?.focus(), 120); }, []);
+
+  // Focus the name field whenever the fallback form appears
+  useEffect(() => { if (fallback) setTimeout(() => nameRef.current?.focus(), 80); }, [fallback]);
 
   async function handleFetch() {
     if (!url.trim()) return;
     let parsed;
     try { parsed = new URL(url.trim()); } catch { setError("that doesn't look like a valid URL"); return; }
-    setLoading(true); setError('');
+    setLoading(true); setError(''); setFallback(null);
     try {
       const data = await extractRecipeFromUrl(url.trim());
       if (data && onExtracted) {
         onExtracted(data);
         return;
       }
-      // Fallback: save hostname-only bookmark (no structured data found)
+      // No structured recipe data found — ask user to name it instead of auto-saving
+      const hostname = parsed.hostname.replace(/^www\./, '');
+      setFallback({ hostname, url: url.trim() });
+      setFallbackName('');
+    } catch (e) { setError(e.message || 'something went wrong'); }
+    finally { setLoading(false); }
+  }
+
+  async function handleSaveBookmark() {
+    if (!fallbackName.trim() || saving) return;
+    setSaving(true); setError('');
+    try {
       if (CONFIGURED && user) {
-        const hostname = parsed.hostname.replace(/^www\./, '');
         const { error: e } = await sb.from('recipes').insert({
-          title: hostname, author_id: user.id, source_url: url.trim(), color: '#C2562E', accent: '#FCEDE2',
+          title: fallbackName.trim(), author_id: user.id, source_url: fallback.url, color: '#C2562E', accent: '#FCEDE2',
         });
         if (e) throw e;
         onSaved?.();
       }
-      setDone(true);
+      setDone(true); setFallback(null);
     } catch (e) { setError(e.message || 'something went wrong'); }
-    finally { setLoading(false); }
+    finally { setSaving(false); }
   }
 
   return (
@@ -818,7 +873,7 @@ function LinkScreen({ onNavigate, user, onSaved, onExtracted }) {
         <div style={{ width: 32 }} />
       </div>
 
-      <div style={{ padding: '24px 20px 0', display: 'flex', flexDirection: 'column', gap: 0 }}>
+      <div style={{ padding: '24px 20px 32px', overflowY: 'auto', height: 'calc(100% - 52px)', display: 'flex', flexDirection: 'column', gap: 0 }}>
         <div style={{ font: `800 32px/0.9 'Bricolage Grotesque', sans-serif`, letterSpacing: -1.2, color: P.ink }}>
           paste a{' '}
           <span style={{ position: 'relative', display: 'inline-block' }}>
@@ -837,7 +892,7 @@ function LinkScreen({ onNavigate, user, onSaved, onExtracted }) {
             <input
               ref={inputRef}
               value={url}
-              onChange={e => { setUrl(e.target.value); setError(''); setDone(false); }}
+              onChange={e => { setUrl(e.target.value); setError(''); setDone(false); setFallback(null); }}
               onKeyDown={e => e.key === 'Enter' && handleFetch()}
               placeholder="https://…"
               style={{ flex: 1, padding: '13px 14px', font: mono(13), color: P.ink, background: P.bg, border: `2px solid ${P.ink}`, borderRadius: 12, outline: 'none', boxShadow: `2px 2px 0 ${P.ink}` }}
@@ -847,27 +902,84 @@ function LinkScreen({ onNavigate, user, onSaved, onExtracted }) {
 
         {error && <div style={{ marginTop: 10, font: mono(11), color: P.red, letterSpacing: 0.2 }}>{error}</div>}
 
-        {done ? (
+        {/* ── Success state ── */}
+        {done && (
           <div style={{ marginTop: 20, padding: '18px', background: P.paper, border: `2px solid ${P.ink}`, borderRadius: 14, boxShadow: `4px 4px 0 ${P.ink}` }}>
             <div style={{ font: disp(18), letterSpacing: -0.3 }}>
-              <span style={{ color: P.red }}>✓</span> recipe saved
+              <span style={{ color: P.red }}>✓</span> link saved
             </div>
             <div style={{ font: mono(11), opacity: 0.6, marginTop: 6, letterSpacing: 0.3 }}>
-              {CONFIGURED ? 'saved as bookmark — couldn\'t read the recipe structure.' : 'link captured · connect Supabase to persist it.'}
+              {CONFIGURED ? 'bookmark added to your feed.' : 'link captured · connect Supabase to persist it.'}
             </div>
             <div onClick={() => onNavigate('home')} style={{ marginTop: 14, display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 14px', background: P.ink, color: P.bg, borderRadius: 999, cursor: 'pointer', font: body(13, 700) }}>
               back to feed <Icon name="arrow" size={16} stroke={P.bg} />
             </div>
           </div>
-        ) : (
+        )}
+
+        {/* ── Fallback: couldn't extract — ask for name ── */}
+        {fallback && !done && (
+          <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {/* Notice */}
+            <div style={{ padding: '12px 14px', background: `${P.yellow}55`, border: `1.5px solid ${P.ink}33`, borderRadius: 10, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              <Icon name="link" size={15} style={{ flexShrink: 0, marginTop: 1 }} />
+              <div>
+                <div style={{ font: body(13, 700), color: P.ink }}>couldn't read the recipe structure</div>
+                <div style={{ font: mono(10), opacity: 0.6, marginTop: 2, letterSpacing: 0.2 }}>from {fallback.hostname} · save it as a link bookmark instead</div>
+              </div>
+            </div>
+
+            {/* Name input */}
+            <div style={{ marginTop: 16 }}>
+              <Eyebrow>what's the recipe called?</Eyebrow>
+              <input
+                ref={nameRef}
+                value={fallbackName}
+                onChange={e => setFallbackName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSaveBookmark()}
+                placeholder="recipe name"
+                style={{ width: '100%', marginTop: 8, padding: '13px 14px', font: body(16, 600), color: P.ink, background: P.bg, border: `2px solid ${P.ink}`, borderRadius: 12, outline: 'none', boxShadow: `2px 2px 0 ${P.ink}` }}
+              />
+            </div>
+
+            {/* Live card preview */}
+            {fallbackName.trim() && (
+              <div style={{ marginTop: 16 }}>
+                <Eyebrow style={{ marginBottom: 10 }}>how it'll look in the feed</Eyebrow>
+                <LinkOnlyCard r={{ title: fallbackName.trim(), source_url: fallback.url, tags: [], cooks: 0 }} onClick={null} />
+              </div>
+            )}
+
+            {/* Save button */}
+            <div
+              onClick={handleSaveBookmark}
+              style={{ marginTop: 14, padding: '15px', background: fallbackName.trim() && !saving ? P.ink : `${P.ink}44`, color: P.bg, borderRadius: 14, font: disp(18), letterSpacing: -0.3, textAlign: 'center', cursor: fallbackName.trim() && !saving ? 'pointer' : 'not-allowed', boxShadow: fallbackName.trim() && !saving ? `4px 4px 0 ${P.red}` : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}
+            >
+              {saving ? 'saving…' : 'save link'}
+              {!saving && <Icon name="external" size={18} stroke={P.bg} />}
+            </div>
+
+            {/* Escape hatch: enter full recipe manually */}
+            <div
+              onClick={() => onExtracted?.({ title: fallbackName.trim() || '', source_url: fallback.url, ingredients: [{ qty: '', item: '' }], steps: [''], tags: [], time: '', servings: 2 })}
+              style={{ marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px', font: body(13, 600), color: P.ink, opacity: 0.65, cursor: 'pointer', letterSpacing: -0.2 }}
+            >
+              or enter the full recipe manually
+              <Icon name="arrow" size={14} />
+            </div>
+          </div>
+        )}
+
+        {/* ── Fetch button (only when no fallback and not done) ── */}
+        {!fallback && !done && (
           <div onClick={!loading ? handleFetch : undefined} style={{ marginTop: 20, padding: '16px', background: !url.trim() || loading ? `${P.ink}55` : P.ink, color: P.bg, borderRadius: 14, font: disp(18), letterSpacing: -0.3, textAlign: 'center', cursor: !url.trim() || loading ? 'not-allowed' : 'pointer', boxShadow: !url.trim() || loading ? 'none' : `4px 4px 0 ${P.red}`, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
             {loading ? 'reading recipe…' : 'fetch recipe'}
             {!loading && <Icon name="arrow" size={18} stroke={P.bg} />}
           </div>
         )}
 
-        {/* Recent URLs placeholder */}
-        {!done && (
+        {/* ── Example sources (only when idle) ── */}
+        {!fallback && !done && (
           <div style={{ marginTop: 28 }}>
             <Eyebrow>example sources</Eyebrow>
             <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
