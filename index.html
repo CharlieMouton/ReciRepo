@@ -1330,6 +1330,7 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave }) {
 
       {/* Main area */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: P.bg }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', maxWidth: 720, width: '100%', margin: '0 auto' }}>
 
         {screen === 'home' && <>
           <div style={{ padding: '28px 32px 0', flexShrink: 0 }}>
@@ -1446,6 +1447,7 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave }) {
         {screen === 'manual' && <ManualScreen onNavigate={navigate} user={user} editRecipe={editRecipe} onSaved={() => { setEditRecipe(null); afterSaved(); }} />}
         {screen === 'link'   && <LinkScreen   onNavigate={navigate} user={user} onSaved={reload} />}
         {screen === 'scan'   && <ScanScreen   onNavigate={navigate} />}
+      </div>
       </div>
 
       {/* Detail panel */}
