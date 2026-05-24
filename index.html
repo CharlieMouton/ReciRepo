@@ -129,6 +129,14 @@ function scaleQty(qty, factor) {
   return rest ? `${formatNum(num * factor)} ${rest}` : formatNum(num * factor);
 }
 
+// Normalise an ingredient to consistent lowercase + collapsed whitespace.
+// Applied at parse-time (URL / OCR) and at save-time (manual entry) so
+// the database always receives clean data.
+function normalizeIngredient({ qty, item }) {
+  const clean = s => (s || '').trim().replace(/\s+/g, ' ').toLowerCase();
+  return { qty: clean(qty), item: clean(item) };
+}
+
 // ── URL recipe extraction ──────────────────────────────────────────────────
 function parseDuration(iso) {
   if (!iso) return '';
@@ -143,7 +151,8 @@ function parseDuration(iso) {
 function parseIngredient(str) {
   // "2 cups flour" → { qty: "2 cups", item: "flour" }
   const m = str.match(/^([\d\s¼-¾⅐-⅞\/]+(?:\s+\w+)?)\s+(.+)/);
-  return m ? { qty: m[1].trim(), item: m[2].trim() } : { qty: '', item: str };
+  const raw = m ? { qty: m[1].trim(), item: m[2].trim() } : { qty: '', item: str };
+  return normalizeIngredient(raw);
 }
 
 async function extractRecipeFromUrl(url) {
@@ -1450,7 +1459,7 @@ function ManualScreen({ onNavigate, user, onSaved, editRecipe, initialData }) {
         }
         if (tags.length)
           await sb.from('recipe_tags').insert(tags.map(t => ({ recipe_id: recipeId, tag: t })));
-        const validI = ingredients.filter(r => r.item.trim());
+        const validI = ingredients.filter(r => r.item.trim()).map(normalizeIngredient);
         if (validI.length)
           await sb.from('ingredients').insert(validI.map((r, idx) => ({ recipe_id: recipeId, qty: r.qty, item: r.item, sort_order: idx })));
         const validS = steps.filter(s => s.trim());
