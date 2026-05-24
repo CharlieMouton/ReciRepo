@@ -40,6 +40,38 @@ No npm, no bundler, no `node_modules`. The entire app is `index.html`.
 
 ## Getting started
 
+### Sign up
+
+Hit the site and create an account with an email and password. Choose a username — it's how your recipes are credited across the feed. Once you're in, you land on the recipe feed.
+
+### Browse the feed
+
+The feed shows every recipe that's been added, newest first. Each card shows the title, author, cook time, and a count of how many people have cooked it. Click any card to open the recipe.
+
+Use the search bar at the top to filter by name, author, or tag. It updates as you type — searching for `layla` surfaces everything Layla has posted; searching `pasta` finds anything tagged or titled accordingly.
+
+### Add a recipe
+
+Tap the **add a recipe** button (the red one in the corner, or the sidebar on desktop). Three paths open up:
+
+- **Type it out.** The manual entry form. Give it a title, cook time, servings, and some tags, then fill in ingredients and steps one by one. Good for recipes you know by heart or are adapting from somewhere.
+
+- **Paste a link.** Drop in a URL from NYT Cooking, Smitten Kitchen, Bon Appétit, AllRecipes, or most other major recipe sites. The app reads the page, extracts the recipe structure buried in the HTML, and drops you into the manual form pre-filled — title, time, servings, ingredients, and steps already there. You review, adjust, and save. You can also paste raw recipe text directly into the form if you've copied it from somewhere without a clean URL.
+
+- **Snap a photo.** Point your camera at a cookbook page, a recipe card, a handwritten note, a screenshot — anything with readable text. The app sends it through an OCR engine and does the same pre-fill dance. Works best on clean, well-lit text; the messier the image, the more you'll want to tidy up before saving.
+
+### Cook a recipe
+
+Open any recipe and tap through it. The cooking view splits into two tabs: **ingredients** (the full list with quantities) and **steps** (one at a time). Each step can have a countdown timer — hit play and it runs in the background while you work. When you finish the last step and mark it done, a cook is logged against the recipe. That number shows up on the card.
+
+### Save and revisit
+
+The bookmark icon on any recipe card or in the cooking view adds it to your saved collection, accessible from the **saved** tab. Your own recipes live in the **profile** tab, along with a count of everything you've cooked.
+
+---
+
+## Deploying your own copy
+
 ### 1. Fork and enable GitHub Pages
 
 Fork this repo, then go to **Settings → Pages → Source** and set it to deploy from the `main` branch root. Your site will be live at `https://<your-username>.github.io/ReciRepo/`.
