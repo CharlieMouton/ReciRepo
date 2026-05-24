@@ -51,18 +51,40 @@ const body = (sz, w = 500) => `${w} ${sz}px/1.35 'Hanken Grotesk', sans-serif`;
 
 // ── Sample data (shown when Supabase is not yet configured) ────────────────
 const SAMPLE_RECIPES = [
-  { id: 'cacio',  title: 'Cacio e Pepe',               author: 'maya',   time: '20 min', tags: ['pasta','weeknight'],  color: '#E8C36E', accent: '#2F2A2A', cooks: 14 },
-  { id: 'eggs',   title: 'Chili crisp eggs over rice',  author: 'daniel', time: '12 min', tags: ['breakfast','spicy'],  color: '#C2562E', accent: '#FCEDE2', cooks: 31 },
-  { id: 'short',  title: 'Burnt honey shortbread',      author: 'priya',  time: '45 min', tags: ['dessert','bake'],     color: '#8E4A1E', accent: '#FCEDE2', cooks:  7 },
-  { id: 'cuke',   title: 'Smashed cucumber salad',      author: 'jordan', time: '10 min', tags: ['side','vegan'],       color: '#6B7A3E', accent: '#FCEDE2', cooks: 22 },
-  { id: 'tahdig', title: 'Saffron tahdig',              author: 'layla',  time: '1 h 15', tags: ['rice','persian'],     color: '#D94F4F', accent: '#FCEDE2', cooks:  9 },
-  { id: 'ramen',  title: 'Miso brown-butter ramen',     author: 'theo',   time: '25 min', tags: ['soup','cozy'],        color: '#3B3A2E', accent: '#F6C26B', cooks: 18 },
-  { id: 'lassi',  title: 'Strawberry lassi',            author: 'riya',   time: '5 min',  tags: ['drink'],              color: '#F2A2A2', accent: '#2F2A2A', cooks: 12 },
-  { id: 'dump',   title: 'Crispy rice-paper dumplings', author: 'wen',    time: '35 min', tags: ['snack','crunchy'],    color: '#E89B5A', accent: '#2B2A26', cooks: 27 },
+  { id: 'cacio',  title: 'Cacio e Pepe',               author: 'maya',   time: '20 min', servings: 2,  tags: ['pasta','weeknight'],  color: '#E8C36E', accent: '#2F2A2A', cooks: 14,
+    image_url: 'https://images.unsplash.com/photo-1473093226555-0f74d1e3571e?w=400&h=300&fit=crop',
+    ingredients: [{ qty: '200g', item: 'spaghetti' }, { qty: '2 tsp', item: 'cracked black pepper' }, { qty: '60g', item: 'Pecorino Romano' }, { qty: '30g', item: 'Parmigiano Reggiano' }] },
+  { id: 'eggs',   title: 'Chili crisp eggs over rice',  author: 'daniel', time: '12 min', servings: 1,  tags: ['breakfast','spicy'],  color: '#C2562E', accent: '#FCEDE2', cooks: 31,
+    image_url: 'https://images.unsplash.com/photo-1525351484163-7529414344d8?w=400&h=300&fit=crop',
+    ingredients: [{ qty: '2', item: 'eggs' }, { qty: '1 cup', item: 'cooked rice' }, { qty: '1 tbsp', item: 'chili crisp' }, { qty: '1 tsp', item: 'soy sauce' }, { qty: '1', item: 'spring onion' }] },
+  { id: 'short',  title: 'Burnt honey shortbread',      author: 'priya',  time: '45 min', servings: 20, tags: ['dessert','bake'],     color: '#8E4A1E', accent: '#FCEDE2', cooks:  7,
+    image_url: 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=400&h=300&fit=crop',
+    ingredients: [{ qty: '225g', item: 'butter' }, { qty: '100g', item: 'honey' }, { qty: '300g', item: 'plain flour' }, { qty: '½ tsp', item: 'flaky salt' }, { qty: '1 tsp', item: 'vanilla extract' }] },
+  { id: 'cuke',   title: 'Smashed cucumber salad',      author: 'jordan', time: '10 min', servings: 4,  tags: ['side','vegan'],       color: '#6B7A3E', accent: '#FCEDE2', cooks: 22,
+    image_url: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&h=300&fit=crop',
+    ingredients: [{ qty: '2', item: 'cucumbers' }, { qty: '2 tbsp', item: 'rice vinegar' }, { qty: '1 tbsp', item: 'sesame oil' }, { qty: '1 tbsp', item: 'soy sauce' }, { qty: '2 cloves', item: 'garlic' }, { qty: '1 tsp', item: 'chili flakes' }] },
+  { id: 'tahdig', title: 'Saffron tahdig',              author: 'layla',  time: '1 h 15', servings: 4,  tags: ['rice','persian'],     color: '#D94F4F', accent: '#FCEDE2', cooks:  9,
+    image_url: 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=400&h=300&fit=crop',
+    ingredients: [{ qty: '2 cups', item: 'basmati rice' }, { qty: '¼ tsp', item: 'saffron threads' }, { qty: '3 tbsp', item: 'butter' }, { qty: '2 tbsp', item: 'vegetable oil' }, { qty: '1½ tsp', item: 'salt' }] },
+  { id: 'ramen',  title: 'Miso brown-butter ramen',     author: 'theo',   time: '25 min', servings: 2,  tags: ['soup','cozy'],        color: '#3B3A2E', accent: '#F6C26B', cooks: 18,
+    image_url: 'https://images.unsplash.com/photo-1569050467447-ce54b3bbc37d?w=400&h=300&fit=crop',
+    ingredients: [{ qty: '2 packs', item: 'instant ramen noodles' }, { qty: '2 tbsp', item: 'white miso paste' }, { qty: '3 tbsp', item: 'butter' }, { qty: '4 cups', item: 'chicken broth' }, { qty: '2', item: 'eggs' }, { qty: '1', item: 'spring onion' }] },
+  { id: 'lassi',  title: 'Strawberry lassi',            author: 'riya',   time: '5 min',  servings: 2,  tags: ['drink'],              color: '#F2A2A2', accent: '#2F2A2A', cooks: 12,
+    image_url: 'https://images.unsplash.com/photo-1553361371-9b22f78e8b1d?w=400&h=300&fit=crop',
+    ingredients: [{ qty: '1 cup', item: 'plain yogurt' }, { qty: '1 cup', item: 'fresh strawberries' }, { qty: '2 tbsp', item: 'honey' }, { qty: '½ cup', item: 'milk' }, { qty: '¼ tsp', item: 'cardamom' }] },
+  { id: 'dump',   title: 'Crispy rice-paper dumplings', author: 'wen',    time: '35 min', servings: 4,  tags: ['snack','crunchy'],    color: '#E89B5A', accent: '#2B2A26', cooks: 27,
+    image_url: 'https://images.unsplash.com/photo-1496116218422-5a2ca7abf8a1?w=400&h=300&fit=crop',
+    ingredients: [{ qty: '8', item: 'round rice paper wrappers' }, { qty: '200g', item: 'ground pork' }, { qty: '2 cloves', item: 'garlic' }, { qty: '1 tbsp', item: 'soy sauce' }, { qty: '1 tsp', item: 'sesame oil' }] },
 ];
 
 const SAMPLE_DETAIL = {
   title: 'Cacio e Pepe', author: 'maya', time: '20 min', servings: 2, cooks: 14,
+  ingredients: [
+    { qty: '200g', item: 'spaghetti' },
+    { qty: '2 tsp', item: 'cracked black pepper' },
+    { qty: '60g', item: 'Pecorino Romano, finely grated' },
+    { qty: '30g', item: 'Parmigiano Reggiano, finely grated' },
+  ],
   steps: [
     { text: 'Toast cracked pepper in a dry pan over medium heat until fragrant.', timer: 60  },
     { text: 'Boil spaghetti in heavily salted water until very al dente.',         timer: 480 },
@@ -71,6 +93,41 @@ const SAMPLE_DETAIL = {
     { text: 'Plate. Shower with more pecorino and a crack of pepper.',            timer: 0   },
   ],
 };
+
+// ── Ingredient quantity scaling ────────────────────────────────────────────
+const UNICODE_FRACS = { '¼':0.25,'½':0.5,'¾':0.75,'⅓':1/3,'⅔':2/3,'⅛':0.125,'⅜':0.375,'⅝':0.625,'⅞':0.875 };
+const FRAC_SYMS = [[3/4,'¾'],[2/3,'⅔'],[1/2,'½'],[1/3,'⅓'],[1/4,'¼'],[3/8,'⅜'],[1/8,'⅛']];
+
+function parseQtyNum(qty) {
+  if (!qty) return { num: null, rest: '' };
+  let s = qty.trim(); let num = 0; let matched = false;
+  const intM = s.match(/^(\d+)\s*/);
+  if (intM) { num = parseInt(intM[1]); s = s.slice(intM[0].length); matched = true; }
+  if (UNICODE_FRACS[s[0]] !== undefined) {
+    num += UNICODE_FRACS[s[0]]; s = s.slice(1).trimStart(); matched = true;
+  } else {
+    const fracM = s.match(/^(\d+)\s*\/\s*(\d+)\s*/);
+    if (fracM) { num += parseInt(fracM[1]) / parseInt(fracM[2]); s = s.slice(fracM[0].length); matched = true; }
+  }
+  return { num: matched ? num : null, rest: s };
+}
+
+function formatNum(n) {
+  if (n === 0) return '0';
+  const whole = Math.floor(n); const frac = n - whole;
+  for (const [val, sym] of FRAC_SYMS) {
+    if (Math.abs(frac - val) < 0.04) return whole > 0 ? `${whole} ${sym}` : sym;
+  }
+  if (Math.abs(frac) < 0.04) return String(Math.round(n));
+  return String(Math.round(n * 4) / 4).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+}
+
+function scaleQty(qty, factor) {
+  if (!qty || !factor || factor === 1) return qty;
+  const { num, rest } = parseQtyNum(qty);
+  if (num === null) return qty; // "to taste", "a pinch" etc.
+  return rest ? `${formatNum(num * factor)} ${rest}` : formatNum(num * factor);
+}
 
 // ── URL recipe extraction ──────────────────────────────────────────────────
 function parseDuration(iso) {
@@ -605,16 +662,32 @@ function RecipeMini({ r, onClick }) {
 // ╭─────────────────────────────────────────────────────────────────────────╮
 // │  Home screen                                                            │
 // ╰─────────────────────────────────────────────────────────────────────────╯
-function HomeScreen({ recipes, loading, onNavigate, onOpenRecipe, user, saved, toggleSave, active = 'home', searchKey = 0, recentlyViewed = [] }) {
-  const [query, setQuery]           = useState('');
-  const [activeFilter, setActiveFilter] = useState(null); // null|'tags'|'time'
+function HomeScreen({ recipes, loading, onNavigate, onOpenRecipe, user, saved, toggleSave, active = 'home', recentlyViewed = [] }) {
+  const [query, setQuery]               = useState('');
+  const [activeFilter, setActiveFilter] = useState(null);
   const [selectedTags, setSelectedTags] = useState(new Set());
-  const [timeLimit, setTimeLimit]   = useState(null);     // null|20|30|45
-  const searchRef                   = useRef(null);
+  const [timeLimit, setTimeLimit]       = useState(null);
+  const [selectedChef, setSelectedChef] = useState(null);
+  const [pantryQuery, setPantryQuery]   = useState('');
+  const [pantryIds, setPantryIds]       = useState(null); // Set<id> from Supabase query, null = no query yet
+  const searchRef                       = useRef(null);
+  const pantryRef                       = useRef(null);
   const username = user?.user_metadata?.username || user?.email?.split('@')[0] || 'you';
 
-  // Focus search when search tab is tapped
-  useEffect(() => { if (searchKey > 0) searchRef.current?.focus(); }, [searchKey]);
+  // Auto-focus pantry input when that filter opens
+  useEffect(() => {
+    if (activeFilter === 'pantry') requestAnimationFrame(() => pantryRef.current?.focus());
+  }, [activeFilter]);
+
+  // Debounced Supabase ingredient search for pantry filter
+  useEffect(() => {
+    if (!CONFIGURED || activeFilter !== 'pantry' || !pantryQuery.trim()) { setPantryIds(null); return; }
+    const timer = setTimeout(async () => {
+      const { data } = await sb.from('ingredients').select('recipe_id').ilike('item', `%${pantryQuery.trim()}%`);
+      setPantryIds(new Set((data || []).map(d => d.recipe_id)));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [pantryQuery, activeFilter]);
 
   const q = query.trim().toLowerCase();
 
@@ -628,7 +701,7 @@ function HomeScreen({ recipes, loading, onNavigate, onOpenRecipe, user, saved, t
   let filtered = q
     ? recipes.filter(r =>
         r.title.toLowerCase().includes(q) ||
-        r.author.toLowerCase().includes(q) ||
+        (r.author || '').toLowerCase().includes(q) ||
         (r.tags || []).some(t => t.includes(q))
       )
     : recipes;
@@ -636,20 +709,26 @@ function HomeScreen({ recipes, loading, onNavigate, onOpenRecipe, user, saved, t
     filtered = filtered.filter(r => [...selectedTags].every(t => (r.tags || []).includes(t)));
   if (activeFilter === 'time' && timeLimit)
     filtered = filtered.filter(r => { const m = parseMinutes(r.time); return m && m <= timeLimit; });
+  if (activeFilter === 'chef' && selectedChef)
+    filtered = filtered.filter(r => r.author === selectedChef);
+  if (activeFilter === 'pantry' && pantryQuery.trim()) {
+    const pq = pantryQuery.trim().toLowerCase();
+    if (CONFIGURED) { filtered = pantryIds !== null ? filtered.filter(r => pantryIds.has(r.id)) : []; }
+    else { filtered = filtered.filter(r => (r.ingredients || []).some(ing => ing.item.toLowerCase().includes(pq))); }
+  }
 
   const allTags = [...new Set(recipes.flatMap(r => r.tags || []))].sort();
-  const isFiltering = q || (activeFilter === 'tags' && selectedTags.size > 0) || (activeFilter === 'time' && timeLimit);
+  const chefs   = [...new Set(recipes.filter(r => !r.is_link && r.author).map(r => r.author))];
+  const isFiltering = q || (activeFilter === 'tags' && selectedTags.size > 0) || (activeFilter === 'time' && timeLimit) || (activeFilter === 'chef' && selectedChef) || (activeFilter === 'pantry' && pantryQuery.trim());
 
-  function toggleFilter(key) {
-    if (activeFilter === key) { setActiveFilter(null); setSelectedTags(new Set()); setTimeLimit(null); }
-    else { setActiveFilter(key); setSelectedTags(new Set()); setTimeLimit(null); }
-  }
+  function resetFilters() { setSelectedTags(new Set()); setTimeLimit(null); setSelectedChef(null); setPantryQuery(''); setPantryIds(null); }
+  function toggleFilter(key) { resetFilters(); setActiveFilter(prev => prev === key ? null : key); }
 
   const filterOpts = [
     { key: null,     label: 'all'    },
     { key: 'tags',   label: 'tags'   },
     { key: 'time',   label: 'time'   },
-    { key: 'who',    label: 'who'    },
+    { key: 'chef',   label: 'chef'   },
     { key: 'pantry', label: 'pantry' },
   ];
 
@@ -696,10 +775,9 @@ function HomeScreen({ recipes, loading, onNavigate, onOpenRecipe, user, saved, t
       <div style={{ padding: '10px 20px 0', display: 'flex', gap: 7, overflowX: 'auto', scrollbarWidth: 'none' }}>
         {filterOpts.map(({ key, label }) => {
           const on = activeFilter === key || (key === null && activeFilter === null);
-          const disabled = key === 'who' || key === 'pantry';
           return (
-            <div key={label} onClick={() => !disabled && (key === null ? (setActiveFilter(null), setSelectedTags(new Set()), setTimeLimit(null)) : toggleFilter(key))}
-              style={{ padding: '5px 12px', borderRadius: 999, border: `1.6px solid ${on ? P.ink : P.ink + '55'}`, background: on ? P.ink : 'transparent', color: on ? P.bg : P.ink, font: body(12, on ? 700 : 500), cursor: disabled ? 'default' : 'pointer', userSelect: 'none', whiteSpace: 'nowrap', opacity: disabled ? 0.35 : 1, flexShrink: 0 }}>
+            <div key={label} onClick={() => key === null ? (setActiveFilter(null), resetFilters()) : toggleFilter(key)}
+              style={{ padding: '5px 12px', borderRadius: 999, border: `1.6px solid ${on ? P.ink : P.ink + '55'}`, background: on ? P.ink : 'transparent', color: on ? P.bg : P.ink, font: body(12, on ? 700 : 500), cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}>
               {label}
             </div>
           );
@@ -736,6 +814,46 @@ function HomeScreen({ recipes, loading, onNavigate, onOpenRecipe, user, saved, t
                 {label}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Chef filter picker */}
+        {activeFilter === 'chef' && (
+          <div style={{ paddingTop: 10, paddingBottom: 4 }}>
+            {chefs.length === 0
+              ? <div style={{ font: mono(10), opacity: 0.4, paddingTop: 2 }}>no chefs yet</div>
+              : <div style={{ display: 'flex', gap: 16, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 4 }}>
+                  {chefs.map(chef => (
+                    <div key={chef} onClick={() => setSelectedChef(prev => prev === chef ? null : chef)}
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, flexShrink: 0, cursor: 'pointer' }}>
+                      <div style={{ padding: 3, borderRadius: '50%', border: `2.5px solid ${selectedChef === chef ? P.red : 'transparent'}`, transition: 'border-color 0.15s' }}>
+                        <Avatar name={chef} size={46} />
+                      </div>
+                      <span style={{ font: mono(9, selectedChef === chef ? 700 : 500), letterSpacing: 0.5, color: selectedChef === chef ? P.red : P.ink }}>{chef}</span>
+                    </div>
+                  ))}
+                </div>
+            }
+          </div>
+        )}
+
+        {/* Pantry filter — ingredient search */}
+        {activeFilter === 'pantry' && (
+          <div style={{ paddingTop: 10, paddingBottom: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', background: P.bg, border: `2px solid ${P.ink}`, borderRadius: 12, boxShadow: `2px 2px 0 ${P.ink}` }}>
+              <Icon name="search" size={16} width={2} />
+              <input
+                ref={pantryRef}
+                value={pantryQuery}
+                onChange={e => setPantryQuery(e.target.value)}
+                placeholder="butter, eggs, garlic…"
+                style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', font: body(14), color: P.ink }}
+              />
+              {pantryQuery && <div onClick={() => { setPantryQuery(''); setPantryIds(null); }} style={{ cursor: 'pointer', opacity: 0.45, lineHeight: 0 }}><Icon name="close" size={13} /></div>}
+            </div>
+            {CONFIGURED && pantryQuery.trim() && pantryIds === null && (
+              <div style={{ marginTop: 6, font: mono(9), opacity: 0.45, letterSpacing: 0.5 }}>searching…</div>
+            )}
           </div>
         )}
 
@@ -805,6 +923,195 @@ function SheetOverlay({ onNavigate }) {
           ))}
         </div>
       </div>
+    </>
+  );
+}
+
+// ╭─────────────────────────────────────────────────────────────────────────╮
+// │  Search screen  (empty until query / filter applied)                    │
+// ╰─────────────────────────────────────────────────────────────────────────╯
+function SearchScreen({ recipes, loading, onNavigate, onOpenRecipe, user }) {
+  const [query, setQuery]               = useState('');
+  const [activeFilter, setActiveFilter] = useState(null);
+  const [selectedTags, setSelectedTags] = useState(new Set());
+  const [timeLimit, setTimeLimit]       = useState(null);
+  const [selectedChef, setSelectedChef] = useState(null);
+  const [pantryQuery, setPantryQuery]   = useState('');
+  const [pantryIds, setPantryIds]       = useState(null);
+  const searchRef = useRef(null);
+  const pantryRef = useRef(null);
+
+  useEffect(() => { requestAnimationFrame(() => searchRef.current?.focus()); }, []);
+  useEffect(() => {
+    if (activeFilter === 'pantry') requestAnimationFrame(() => pantryRef.current?.focus());
+  }, [activeFilter]);
+
+  useEffect(() => {
+    if (!CONFIGURED || activeFilter !== 'pantry' || !pantryQuery.trim()) { setPantryIds(null); return; }
+    const timer = setTimeout(async () => {
+      const { data } = await sb.from('ingredients').select('recipe_id').ilike('item', `%${pantryQuery.trim()}%`);
+      setPantryIds(new Set((data || []).map(d => d.recipe_id)));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [pantryQuery, activeFilter]);
+
+  function resetFilters() { setSelectedTags(new Set()); setTimeLimit(null); setSelectedChef(null); setPantryQuery(''); setPantryIds(null); }
+  function toggleFilter(key) { resetFilters(); setActiveFilter(prev => prev === key ? null : key); }
+
+  function parseMinutes(t) {
+    if (!t) return null;
+    const h = Number((t.match(/(\d+)\s*h/) || [0,0])[1]);
+    const m = Number((t.match(/(\d+)\s*min/) || [0,0])[1]);
+    return (h * 60 + m) || null;
+  }
+
+  const q = query.trim().toLowerCase();
+  const isActive = q || (activeFilter === 'tags' && selectedTags.size > 0) || (activeFilter === 'time' && timeLimit) || (activeFilter === 'chef' && selectedChef) || (activeFilter === 'pantry' && pantryQuery.trim());
+
+  let filtered = recipes;
+  if (q) filtered = filtered.filter(r => r.title.toLowerCase().includes(q) || (r.author || '').toLowerCase().includes(q) || (r.tags || []).some(t => t.includes(q)));
+  if (activeFilter === 'tags' && selectedTags.size > 0) filtered = filtered.filter(r => [...selectedTags].every(t => (r.tags || []).includes(t)));
+  if (activeFilter === 'time' && timeLimit) filtered = filtered.filter(r => { const m = parseMinutes(r.time); return m && m <= timeLimit; });
+  if (activeFilter === 'chef' && selectedChef) filtered = filtered.filter(r => r.author === selectedChef);
+  if (activeFilter === 'pantry' && pantryQuery.trim()) {
+    const pq = pantryQuery.trim().toLowerCase();
+    if (CONFIGURED) { filtered = pantryIds !== null ? filtered.filter(r => pantryIds.has(r.id)) : []; }
+    else { filtered = filtered.filter(r => (r.ingredients || []).some(ing => ing.item.toLowerCase().includes(pq))); }
+  }
+
+  const allTags = [...new Set(recipes.flatMap(r => r.tags || []))].sort();
+  const chefs   = [...new Set(recipes.filter(r => !r.is_link && r.author).map(r => r.author))];
+
+  const filterOpts = [
+    { key: 'tags',   label: 'tags'   },
+    { key: 'time',   label: 'time'   },
+    { key: 'chef',   label: 'chef'   },
+    { key: 'pantry', label: 'pantry' },
+  ];
+
+  return (
+    <>
+      {/* Header */}
+      <div style={{ padding: '8px 20px 0', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '11px 14px', background: P.bg, border: `2px solid ${P.ink}`, borderRadius: 999, boxShadow: `3px 3px 0 ${P.ink}` }}>
+          <Icon name="search" size={17} width={2.2} />
+          <input
+            ref={searchRef}
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="search recipes, chefs, tags…"
+            style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', font: body(14), color: P.ink }}
+          />
+          {query && <div onClick={() => setQuery('')} style={{ cursor: 'pointer', opacity: 0.45, lineHeight: 0 }}><Icon name="close" size={14} /></div>}
+        </div>
+        <div onClick={() => onNavigate('home')} style={{ font: body(13, 600), color: P.ink, opacity: 0.6, cursor: 'pointer', whiteSpace: 'nowrap' }}>cancel</div>
+      </div>
+
+      {/* Filter chips */}
+      <div style={{ padding: '10px 20px 0', display: 'flex', gap: 7, overflowX: 'auto', scrollbarWidth: 'none' }}>
+        {filterOpts.map(({ key, label }) => {
+          const on = activeFilter === key;
+          return (
+            <div key={label} onClick={() => toggleFilter(key)}
+              style={{ padding: '5px 12px', borderRadius: 999, border: `1.6px solid ${on ? P.ink : P.ink + '55'}`, background: on ? P.ink : 'transparent', color: on ? P.bg : P.ink, font: body(12, on ? 700 : 500), cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}>
+              {label}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Scrollable body */}
+      <div style={{ padding: '0 20px 110px', overflowY: 'auto', height: 'calc(100% - 155px)' }}>
+
+        {/* Sub-panels */}
+        {activeFilter === 'tags' && (
+          <div style={{ paddingTop: 10, paddingBottom: 4 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {allTags.map(tag => {
+                const sel = selectedTags.has(tag);
+                return (
+                  <div key={tag} onClick={() => setSelectedTags(prev => { const n = new Set(prev); sel ? n.delete(tag) : n.add(tag); return n; })}
+                    style={{ padding: '5px 10px', borderRadius: 999, border: `1.6px solid ${P.ink}`, background: sel ? P.red : 'transparent', color: sel ? P.bg : P.ink, font: body(12, sel ? 700 : 500), cursor: 'pointer', userSelect: 'none' }}>
+                    {tag}
+                  </div>
+                );
+              })}
+              {allTags.length === 0 && <div style={{ font: mono(10), opacity: 0.4, paddingTop: 2 }}>no tags yet</div>}
+            </div>
+          </div>
+        )}
+
+        {activeFilter === 'time' && (
+          <div style={{ paddingTop: 10, paddingBottom: 4, display: 'flex', gap: 8 }}>
+            {[[20,'≤ 20 min'],[30,'≤ 30 min'],[45,'≤ 45 min']].map(([mins, label]) => (
+              <div key={mins} onClick={() => setTimeLimit(timeLimit === mins ? null : mins)}
+                style={{ padding: '6px 12px', borderRadius: 999, border: `1.6px solid ${P.ink}`, background: timeLimit === mins ? P.ink : 'transparent', color: timeLimit === mins ? P.bg : P.ink, font: body(12, 600), cursor: 'pointer', userSelect: 'none' }}>
+                {label}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {activeFilter === 'chef' && (
+          <div style={{ paddingTop: 10, paddingBottom: 4 }}>
+            {chefs.length === 0
+              ? <div style={{ font: mono(10), opacity: 0.4, paddingTop: 2 }}>no chefs yet</div>
+              : <div style={{ display: 'flex', gap: 16, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 4 }}>
+                  {chefs.map(chef => (
+                    <div key={chef} onClick={() => setSelectedChef(prev => prev === chef ? null : chef)}
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, flexShrink: 0, cursor: 'pointer' }}>
+                      <div style={{ padding: 3, borderRadius: '50%', border: `2.5px solid ${selectedChef === chef ? P.red : 'transparent'}`, transition: 'border-color 0.15s' }}>
+                        <Avatar name={chef} size={46} />
+                      </div>
+                      <span style={{ font: mono(9, selectedChef === chef ? 700 : 500), letterSpacing: 0.5, color: selectedChef === chef ? P.red : P.ink }}>{chef}</span>
+                    </div>
+                  ))}
+                </div>
+            }
+          </div>
+        )}
+
+        {activeFilter === 'pantry' && (
+          <div style={{ paddingTop: 10, paddingBottom: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', background: P.bg, border: `2px solid ${P.ink}`, borderRadius: 12, boxShadow: `2px 2px 0 ${P.ink}` }}>
+              <Icon name="search" size={16} width={2} />
+              <input
+                ref={pantryRef}
+                value={pantryQuery}
+                onChange={e => setPantryQuery(e.target.value)}
+                placeholder="butter, eggs, garlic…"
+                style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', font: body(14), color: P.ink }}
+              />
+              {pantryQuery && <div onClick={() => { setPantryQuery(''); setPantryIds(null); }} style={{ cursor: 'pointer', opacity: 0.45, lineHeight: 0 }}><Icon name="close" size={13} /></div>}
+            </div>
+            {CONFIGURED && pantryQuery.trim() && pantryIds === null && (
+              <div style={{ marginTop: 6, font: mono(9), opacity: 0.45, letterSpacing: 0.5 }}>searching…</div>
+            )}
+          </div>
+        )}
+
+        {/* Results or empty state */}
+        <div style={{ paddingTop: 16 }}>
+          {!isActive ? (
+            <div style={{ paddingTop: 48, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, opacity: 0.35 }}>
+              <Icon name="search" size={40} width={1.5} />
+              <div style={{ font: mono(10), letterSpacing: 1.5, textTransform: 'uppercase', textAlign: 'center', lineHeight: 1.7 }}>
+                type to search<br />or pick a filter above
+              </div>
+            </div>
+          ) : loading ? (
+            <div style={{ textAlign: 'center', font: mono(11), opacity: 0.5, letterSpacing: 1.5, textTransform: 'uppercase' }}>loading…</div>
+          ) : filtered.length === 0 ? (
+            <div style={{ textAlign: 'center', font: mono(11), opacity: 0.5, letterSpacing: 1.5, textTransform: 'uppercase' }}>no results</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+              {filtered.map(r => <RecipeCard key={r.id} r={r} onClick={() => onOpenRecipe(r)} />)}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <TabBar active="search" onNavigate={onNavigate} />
     </>
   );
 }
@@ -1607,9 +1914,7 @@ function CookingScreen({ recipe, user, onNavigate, onDeleted, onEdit, saved, tog
               : ingredients.map((ing, i) => (
                 <div key={i} style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8, padding: '8px 0', borderBottom: `1px solid ${P.ink}22` }}>
                   <span style={{ font: `700 15px/1.2 'Bricolage Grotesque', sans-serif`, color: P.red }}>
-                    {serves !== origServings && ing.qty
-                      ? (() => { const n = parseFloat(ing.qty); return isNaN(n) ? ing.qty : (n * serves / origServings).toFixed(n % 1 === 0 ? 0 : 1) + ing.qty.replace(/^[\d.]+/, ''); })()
-                      : ing.qty}
+                    {scaleQty(ing.qty, serves / origServings)}
                   </span>
                   <span style={{ font: body(14) }}>{ing.item}</span>
                 </div>
@@ -1829,7 +2134,7 @@ function DesktopRecipeDetail({ recipe, user, onClose, onDeleted, onEdit, saved, 
                 ? <div style={{ font: body(14), opacity: 0.4, marginTop: 8 }}>no ingredients listed</div>
                 : ingredients.map((ing, i) => (
                   <div key={i} style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8, padding: '8px 0', borderBottom: `1px solid ${P.ink}22` }}>
-                    <span style={{ font: `700 15px/1.2 'Bricolage Grotesque', sans-serif`, color: P.red }}>{ing.qty}</span>
+                    <span style={{ font: `700 15px/1.2 'Bricolage Grotesque', sans-serif`, color: P.red }}>{scaleQty(ing.qty, serves / origServings)}</span>
                     <span style={{ font: body(14) }}>{ing.item}</span>
                   </div>
                 ))
@@ -1871,14 +2176,11 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave }) {
   const [editRecipe, setEditRecipe]         = useState(null);
   const [draftRecipe, setDraftRecipe]       = useState(null);
   const [query, setQuery]                   = useState('');
-  const [searchKey, setSearchKey]           = useState(0);
   const desktopSearchRef                    = useRef(null);
   const username = user?.user_metadata?.username || user?.email?.split('@')[0] || 'you';
 
-  useEffect(() => { if (searchKey > 0) desktopSearchRef.current?.focus(); }, [searchKey]);
-
   function navigate(s) {
-    if (s === 'search') { setSearchKey(k => k + 1); setScreen('home'); return; }
+    if (s === 'search') { setScreen('home'); requestAnimationFrame(() => desktopSearchRef.current?.focus()); return; }
     if (s !== 'manual') setDraftRecipe(null);
     setScreen(s);
     if (s === 'home') setEditRecipe(null);
@@ -2087,11 +2389,9 @@ function App() {
   const [editRecipe, setEditRecipe]             = useState(null);
   const [draftRecipe, setDraftRecipe]           = useState(null);
   const [recentlyViewed, setRecentlyViewed]     = useState([]);
-  const [searchKey, setSearchKey]               = useState(0);
   const isDesktop                               = useWindowWidth() >= 900;
 
   function navigate(s) {
-    if (s === 'search') { setSearchKey(k => k + 1); setScreen('search'); return; }
     if (s !== 'manual') setDraftRecipe(null);
     setScreen(s);
   }
@@ -2140,8 +2440,9 @@ function App() {
   return (
     <div style={{ width: '100vw', height: '100dvh', background: '#1a1815', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <Phone>
-        {(screen === 'home' || screen === 'sheet' || screen === 'search') && <HomeScreen recipes={recipes} loading={loading} onNavigate={navigate} onOpenRecipe={openRecipe} user={user} saved={saved} toggleSave={toggleSave} active={screen} searchKey={searchKey} recentlyViewed={recentlyViewed} />}
+        {(screen === 'home' || screen === 'sheet') && <HomeScreen recipes={recipes} loading={loading} onNavigate={navigate} onOpenRecipe={openRecipe} user={user} saved={saved} toggleSave={toggleSave} active={screen} recentlyViewed={recentlyViewed} />}
         {screen === 'sheet'   && <SheetOverlay onNavigate={navigate} />}
+        {screen === 'search'  && <SearchScreen recipes={recipes} loading={loading} onNavigate={navigate} onOpenRecipe={openRecipe} user={user} />}
         {screen === 'saved'   && <SavedScreen  onNavigate={navigate} onOpenRecipe={openRecipe} user={user} recipes={recipes} saved={saved} />}
         {screen === 'profile' && <ProfileScreen onNavigate={navigate} onOpenRecipe={openRecipe} user={user} recipes={recipes} />}
         {screen === 'manual'  && <ManualScreen onNavigate={navigate} user={user} editRecipe={editRecipe} initialData={draftRecipe} onSaved={() => { setDraftRecipe(null); setEditRecipe(null); afterSaved(); }} />}
