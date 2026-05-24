@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&amp;display=swap');
+    </style>
+  </defs>
+  <!-- Red rotated rounded rect — mirrors the wordmark's "repo" box -->
+  <rect x="2" y="2" width="28" height="28" rx="5" fill="#D94F4F"
+        transform="rotate(-2 16 16)"/>
+  <!-- Capital R in cream -->
+  <text x="16.5" y="25"
+        text-anchor="middle"
+        font-family="'Bricolage Grotesque','Arial Black',Impact,sans-serif"
+        font-weight="800"
+        font-size="23"
+        fill="#FCEDE2">R</text>
+</svg>
