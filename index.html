@@ -313,9 +313,9 @@ function useRecipes() {
               const isLink = !!r.source_url && !r.time_text;
               return { id: r.id, title: r.title, author: r.author_username, author_id: r.author_id, time: r.time_text || '?', servings: r.servings || 2, tags: r.tags || [], color: r.color, accent: r.accent, cooks: Number(r.cook_count) || 0, image_url: r.image_url || null, source_url: r.source_url || null, is_link: isLink };
             })
-          : SAMPLE_RECIPES
+          : []
       );
-    } catch { setRecipes(SAMPLE_RECIPES); }
+    } catch { setRecipes([]); }
     finally { setLoading(false); }
   }
 
@@ -872,8 +872,18 @@ function HomeScreen({ recipes, loading, onNavigate, onOpenRecipe, user, saved, t
           {!isFiltering && recentlyViewed.length > 0 && <Eyebrow>all recipes</Eyebrow>}
           {loading
             ? <div style={{ paddingTop: 40, textAlign: 'center', font: mono(11), opacity: 0.5, letterSpacing: 1.5, textTransform: 'uppercase' }}>loading…</div>
-            : filtered.length === 0
+            : isFiltering && filtered.length === 0
             ? <div style={{ paddingTop: 40, textAlign: 'center', font: mono(11), opacity: 0.5, letterSpacing: 1.5, textTransform: 'uppercase' }}>no results</div>
+            : !isFiltering && filtered.length === 0
+            ? (
+              <div style={{ paddingTop: 60, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, opacity: 0.5 }}>
+                <Icon name="sparkle" size={38} width={1.5} />
+                <div style={{ font: mono(10), letterSpacing: 1.5, textTransform: 'uppercase', textAlign: 'center', lineHeight: 1.8 }}>
+                  your cookbook is empty<br />
+                  <span style={{ opacity: 0.75 }}>tap + to add your first recipe</span>
+                </div>
+              </div>
+            )
             : filtered.map(r => <RecipeCard key={r.id} r={r} onClick={() => onOpenRecipe(r)} />)
           }
         </div>
@@ -1189,7 +1199,7 @@ function LinkScreen({ onNavigate, user, onSaved, onExtracted }) {
           </span>.
         </div>
         <div style={{ marginTop: 8, font: mono(11), opacity: 0.55, letterSpacing: 0.3 }}>
-          NYT Cooking, Smitten Kitchen, AllRecipes — we'll grab it.
+          Smitten Kitchen, AllRecipes, BBC Good Food — we'll grab it.
         </div>
 
         {/* URL input */}
@@ -1285,14 +1295,12 @@ function LinkScreen({ onNavigate, user, onSaved, onExtracted }) {
           </div>
         )}
 
-        {/* ── Example sources (only when idle) ── */}
+        {/* ── Supported sites note (only when idle) ── */}
         {!fallback && !done && (
-          <div style={{ marginTop: 28 }}>
-            <Eyebrow>example sources</Eyebrow>
-            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {['cooking.nytimes.com','smittenkitchen.com','bonappetit.com'].map(host => (
-                <div key={host} onClick={() => setUrl(`https://${host}/`)} style={{ padding: '10px 14px', border: `1.5px solid ${P.ink}33`, borderRadius: 10, font: mono(11), color: P.ink, opacity: 0.6, cursor: 'pointer', letterSpacing: 0.3 }}>{host}</div>
-              ))}
+          <div style={{ marginTop: 28, padding: '12px 14px', background: P.paper, border: `1.5px solid ${P.ink}22`, borderRadius: 12 }}>
+            <Eyebrow style={{ marginBottom: 6 }}>what works</Eyebrow>
+            <div style={{ font: mono(10), opacity: 0.55, letterSpacing: 0.3, lineHeight: 1.75 }}>
+              Any site that publishes standard recipe markup — smittenkitchen.com, allrecipes.com, bbcgoodfood.com, bonappetit.com, and thousands more. If extraction fails, you can save it as a link bookmark or enter the recipe manually.
             </div>
           </div>
         )}
@@ -1749,7 +1757,7 @@ function ScanScreen({ onNavigate, onExtracted }) {
 // ╭─────────────────────────────────────────────────────────────────────────╮
 // │  Cooking screen                                                         │
 // ╰─────────────────────────────────────────────────────────────────────────╯
-function CookingScreen({ recipe, user, onNavigate, onDeleted, onEdit, saved, toggleSave }) {
+function CookingScreen({ recipe, user, onNavigate, onDeleted, onEdit, saved, toggleSave, onComplete }) {
   const [detail, setDetail]             = useState(null);
   const [stepIdx, setStepIdx]           = useState(0);
   const [serves, setServes]             = useState(2);
@@ -1834,6 +1842,7 @@ function CookingScreen({ recipe, user, onNavigate, onDeleted, onEdit, saved, tog
   async function handleComplete() {
     if (CONFIGURED && user && recipe) {
       try { await sb.from('cook_logs').insert({ recipe_id: recipe.id, user_id: user.id }); } catch {}
+      onComplete?.(); // refresh cook count in feed
     }
     onNavigate('home');
   }
@@ -2193,7 +2202,7 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave }) {
   const filteredRecipes = q
     ? recipes.filter(r =>
         r.title.toLowerCase().includes(q) ||
-        r.author.toLowerCase().includes(q) ||
+        (r.author || '').toLowerCase().includes(q) ||
         (r.tags || []).some(t => t.includes(q))
       )
     : recipes;
@@ -2448,7 +2457,7 @@ function App() {
         {screen === 'manual'  && <ManualScreen onNavigate={navigate} user={user} editRecipe={editRecipe} initialData={draftRecipe} onSaved={() => { setDraftRecipe(null); setEditRecipe(null); afterSaved(); }} />}
         {screen === 'link'    && <LinkScreen   onNavigate={navigate} user={user} onSaved={reload} onExtracted={data => { setDraftRecipe(data); setScreen('manual'); }} />}
         {screen === 'scan'    && <ScanScreen   onNavigate={navigate} onExtracted={data => { setDraftRecipe(data); setScreen('manual'); }} />}
-        {screen === 'cooking' && <CookingScreen recipe={selectedRecipe} user={user} onNavigate={navigate} onDeleted={afterDeleted} onEdit={openEdit} saved={saved} toggleSave={toggleSave} />}
+        {screen === 'cooking' && <CookingScreen recipe={selectedRecipe} user={user} onNavigate={navigate} onDeleted={afterDeleted} onEdit={openEdit} saved={saved} toggleSave={toggleSave} onComplete={reload} />}
       </Phone>
     </div>
   );
