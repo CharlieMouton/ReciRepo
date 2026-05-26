@@ -147,6 +147,35 @@ const UNIT_WORDS = new Set([
   'piece','pieces','sprig','sprigs','stalk','stalks',
 ]);
 
+// ── Common ingredient list (for autocomplete) ──────────────────────────────
+const COMMON_INGREDIENTS = [
+  'garlic','onion','shallot','spring onion','olive oil','vegetable oil',
+  'butter','salt','black pepper','chilli flakes','paprika','cumin',
+  'ground coriander','turmeric','cinnamon','flour','plain flour',
+  'self-raising flour','cornflour','baking powder','baking soda',
+  'eggs','milk','double cream','sour cream','greek yogurt','cream cheese',
+  'parmesan','cheddar','mozzarella','feta','sugar','brown sugar',
+  'honey','maple syrup','vanilla extract','cocoa powder','dark chocolate',
+  'lemon juice','lemon zest','lime juice','white wine vinegar',
+  'balsamic vinegar','soy sauce','fish sauce','sesame oil','dijon mustard',
+  'tomatoes','cherry tomatoes','tinned tomatoes','tomato paste','garlic paste',
+  'chicken breast','chicken thighs','beef mince','bacon','smoked salmon',
+  'pasta','spaghetti','penne','rice','basmati rice','bread','sourdough',
+  'potatoes','sweet potato','carrots','celery','leek','courgette','aubergine',
+  'spinach','kale','broccoli','fresh ginger','fresh parsley','fresh basil',
+  'fresh thyme','fresh rosemary','fresh coriander','chicken stock',
+  'vegetable stock','beef stock','white wine','breadcrumbs','pine nuts',
+  'walnuts','almonds','oats',
+];
+
+function getStaticSuggestions(q) {
+  if (!q || q.length < 2) return [];
+  const lower = q.toLowerCase();
+  const prefix = COMMON_INGREDIENTS.filter(s => s.startsWith(lower));
+  const substr = COMMON_INGREDIENTS.filter(s => !s.startsWith(lower) && s.includes(lower));
+  return [...prefix, ...substr].slice(0, 6);
+}
+
 // ── URL recipe extraction ──────────────────────────────────────────────────
 function parseDuration(iso) {
   if (!iso) return '';
@@ -1437,6 +1466,8 @@ function ManualScreen({ onNavigate, user, onSaved, editRecipe, initialData }) {
   const [saving, setSaving]         = useState(false);
   const [error, setError]           = useState('');
   const [sourceUrl, setSourceUrl]   = useState('');
+  const [activeIngIdx, setActiveIngIdx] = useState(null);
+  const [suggestions, setSuggestions]   = useState([]);
   const [showPaste, setShowPaste]       = useState(false);
   const [pasteText, setPasteText]       = useState('');
   const [coverFile, setCoverFile]       = useState(null);
@@ -1479,6 +1510,22 @@ function ManualScreen({ onNavigate, user, onSaved, editRecipe, initialData }) {
     setSteps(initialData.steps?.length ? initialData.steps : ['']);
     setSourceUrl(initialData.source_url || '');
   }, [initialData]);
+
+  // Debounced ingredient autocomplete
+  useEffect(() => {
+    const q = (activeIngIdx !== null ? ingredients[activeIngIdx]?.item : '') || '';
+    const staticHits = getStaticSuggestions(q);
+    setSuggestions(staticHits);
+    if (!CONFIGURED || q.length < 2) return;
+    const timer = setTimeout(async () => {
+      const { data } = await sb.from('ingredients').select('item')
+        .ilike('item', `%${q.toLowerCase()}%`).limit(20);
+      const dbItems = [...new Set((data || []).map(d => d.item))]
+        .filter(s => s !== q.toLowerCase() && s.split(/\s+/).length <= 4 && s.length <= 35);
+      setSuggestions([...new Set([...staticHits, ...dbItems])].slice(0, 6));
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [activeIngIdx, ingredients]);
 
   function addTag(raw) {
     const t = raw.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
@@ -1644,10 +1691,34 @@ function ManualScreen({ onNavigate, user, onSaved, editRecipe, initialData }) {
             {ingredients.map((ing, idx) => (
               <div key={idx} style={{ display: 'grid', gridTemplateColumns: '80px 1fr 22px', gap: 8, padding: '7px 0', borderBottom: `1px solid ${P.ink}22`, alignItems: 'center' }}>
                 <input value={ing.qty} onChange={e => updateIngred(idx, 'qty', e.target.value)} placeholder="1 cup" style={{ ...fieldBase, font: `700 15px/1 'Bricolage Grotesque', sans-serif`, color: P.red, letterSpacing: -0.3 }} />
-                <input value={ing.item} onChange={e => updateIngred(idx, 'item', e.target.value)} placeholder="ingredient" style={{ ...fieldBase, font: body(14), lineHeight: 1 }} />
+                <input
+                  value={ing.item}
+                  onChange={e => updateIngred(idx, 'item', e.target.value)}
+                  onFocus={() => setActiveIngIdx(idx)}
+                  onBlur={() => setTimeout(() => { setActiveIngIdx(null); setSuggestions([]); }, 160)}
+                  placeholder="ingredient"
+                  style={{ ...fieldBase, font: body(14), lineHeight: 1 }}
+                />
                 <div onClick={() => removeIngred(idx)} style={{ cursor: 'pointer', opacity: 0.35, display: 'grid', placeItems: 'center' }}><Icon name="close" size={13} /></div>
               </div>
             ))}
+            {/* Ingredient autocomplete chip strip */}
+            {suggestions.length > 0 && activeIngIdx !== null && (
+              <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 4, marginTop: 6 }}>
+                {suggestions.map(s => (
+                  <div key={s}
+                    onMouseDown={e => {
+                      e.preventDefault();
+                      updateIngred(activeIngIdx, 'item', s);
+                      setSuggestions([]);
+                      setActiveIngIdx(null);
+                    }}
+                    style={{ padding: '5px 11px 4px', borderRadius: 999, border: `1.5px solid ${P.ink}55`, background: P.paper, font: mono(10), color: P.ink, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                    {s}
+                  </div>
+                ))}
+              </div>
+            )}
             <div onClick={() => setIngred(prev => [...prev, { qty: '', item: '' }])} style={{ marginTop: 7, font: mono(10), color: P.ink, opacity: 0.55, cursor: 'pointer' }}>+ add ingredient</div>
           </div>
         </div>
@@ -2502,6 +2573,70 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave }) {
 // ╭─────────────────────────────────────────────────────────────────────────╮
 // │  App root                                                               │
 // ╰─────────────────────────────────────────────────────────────────────────╯
+// ╭─────────────────────────────────────────────────────────────────────────╮
+// │  Onboarding screen (shown once per browser to new authenticated users)  │
+// ╰─────────────────────────────────────────────────────────────────────────╯
+function OnboardingScreen({ user, onDone }) {
+  const [step, setStep] = useState(0);
+
+  const dots = (
+    <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
+      {[0, 1].map(i => (
+        <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: i <= step ? P.ink : `${P.ink}33`, transition: 'background 0.2s' }} />
+      ))}
+    </div>
+  );
+
+  const cards = [
+    { icon: 'home', title: 'browse recipes', sub: 'explore the feed',   bg: P.bg,  color: P.ink, to: null    },
+    { icon: 'plus', title: 'add a recipe',   sub: 'type, scan or paste', bg: P.red, color: P.bg,  to: 'sheet' },
+  ];
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: P.bg, padding: '16px 28px', overflowY: 'auto' }}>
+      <Wordmark size={20} />
+      {dots}
+
+      {step === 0 ? (
+        <>
+          <div style={{ marginTop: 28, font: disp(40, 800), letterSpacing: -1.4, color: P.ink, lineHeight: 0.92 }}>
+            our recipes,<br />to share.
+          </div>
+          <div style={{ marginTop: 20, font: body(14), color: P.ink, opacity: 0.65, lineHeight: 1.6 }}>
+            save recipes from anywhere — paste a link, scan a page, or write it yourself. browse other recipes and cook step-by-step.
+          </div>
+          <div style={{ flex: 1 }} />
+          <div onClick={() => setStep(1)}
+            style={{ padding: '16px', background: P.ink, color: P.bg, borderRadius: 16, font: disp(20), letterSpacing: -0.3, textAlign: 'center', cursor: 'pointer', boxShadow: `4px 4px 0 ${P.red}`, marginBottom: 8 }}>
+            next →
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ marginTop: 28, font: disp(38, 800), letterSpacing: -1.2, color: P.ink, lineHeight: 0.92 }}>
+            where do you<br />want to start?
+          </div>
+          <div style={{ marginTop: 28, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {cards.map(c => (
+              <div key={c.title} onClick={() => onDone(c.to)}
+                style={{ display: 'grid', gridTemplateColumns: '52px 1fr 22px', alignItems: 'center', gap: 12, padding: '16px 14px', background: c.bg, color: c.color, border: `2px solid ${P.ink}`, borderRadius: 14, boxShadow: `4px 4px 0 ${P.ink}`, cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ width: 46, height: 46, borderRadius: 10, background: P.ink, color: P.bg, display: 'grid', placeItems: 'center' }}>
+                  <Icon name={c.icon} size={22} width={2.2} />
+                </div>
+                <div>
+                  <div style={{ font: disp(19), letterSpacing: -0.4 }}>{c.title}</div>
+                  <div style={{ font: mono(10), opacity: 0.7, marginTop: 3, letterSpacing: 0.4 }}>{c.sub}</div>
+                </div>
+                <Icon name="arrow" size={20} />
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function App() {
   const user                                    = useAuth();
   const { recipes, loading, reload }            = useRecipes();
@@ -2511,11 +2646,17 @@ function App() {
   const [editRecipe, setEditRecipe]             = useState(null);
   const [draftRecipe, setDraftRecipe]           = useState(null);
   const [recentlyViewed, setRecentlyViewed]     = useState([]);
+  const [showOnboarding, setShowOnboarding]     = useState(() => CONFIGURED && !localStorage.getItem('rr_onboarded'));
   const isDesktop                               = useWindowWidth() >= 900;
 
   function navigate(s) {
     if (s !== 'manual') setDraftRecipe(null);
     setScreen(s);
+  }
+  function finishOnboarding(goTo) {
+    localStorage.setItem('rr_onboarded', '1');
+    setShowOnboarding(false);
+    if (goTo) navigate(goTo);
   }
   function openRecipe(r) {
     setRecentlyViewed(prev => [r, ...prev.filter(x => x.id !== r.id)].slice(0, 8));
@@ -2551,6 +2692,16 @@ function App() {
     return (
       <div style={{ width: '100vw', height: '100dvh', background: '#1a1815', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Phone><AuthScreen /></Phone>
+      </div>
+    );
+  }
+
+  if (showOnboarding && user) {
+    return (
+      <div style={{ width: '100vw', height: '100dvh', background: '#1a1815', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Phone>
+          <OnboardingScreen user={user} onDone={finishOnboarding} />
+        </Phone>
       </div>
     );
   }
