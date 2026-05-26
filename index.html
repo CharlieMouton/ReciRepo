@@ -147,6 +147,21 @@ const UNIT_WORDS = new Set([
   'piece','pieces','sprig','sprigs','stalk','stalks',
 ]);
 
+function normalizeTimeText(raw) {
+  if (!raw) return raw;
+  const s = raw.trim();
+  let mins = 0;
+  const hrMatch  = s.match(/(\d+)\s*h/i);
+  const minMatch = s.match(/(\d+)\s*m/i);
+  if (hrMatch)  mins += parseInt(hrMatch[1]) * 60;
+  if (minMatch) mins += parseInt(minMatch[1]);
+  if (!hrMatch && !minMatch && /^\d+$/.test(s)) mins = parseInt(s);
+  if (mins <= 0) return s;
+  if (mins < 60) return `${mins} min`;
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return m === 0 ? `${h} hr${h > 1 ? 's' : ''}` : `${h} hr ${m} min`;
+}
+
 // ── Common ingredient list (for autocomplete) ──────────────────────────────
 const COMMON_INGREDIENTS = [
   'garlic','onion','shallot','spring onion','olive oil','vegetable oil',
@@ -466,6 +481,16 @@ function useSaves(user) {
     }
   }
   return { saved, toggleSave };
+}
+
+function useIsAdmin(user) {
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    if (!CONFIGURED || !user) { setIsAdmin(false); return; }
+    sb.from('profiles').select('is_admin').eq('id', user.id).single()
+      .then(({ data }) => setIsAdmin(data?.is_admin === true));
+  }, [user?.id]);
+  return isAdmin;
 }
 
 // ── Primitive components ───────────────────────────────────────────────────
@@ -1605,7 +1630,7 @@ function ManualScreen({ onNavigate, user, onSaved, editRecipe, initialData }) {
         }
         let recipeId;
         if (isEdit) {
-          const { error: e1 } = await sb.from('recipes').update({ title: title.trim(), time_text: timeText, servings: parseInt(servings) || 2, ...(imageUrl !== undefined ? { image_url: imageUrl || null } : {}) }).eq('id', editRecipe.id);
+          const { error: e1 } = await sb.from('recipes').update({ title: title.trim(), time_text: normalizeTimeText(timeText), servings: parseInt(servings) || 2, ...(imageUrl !== undefined ? { image_url: imageUrl || null } : {}) }).eq('id', editRecipe.id);
           if (e1) throw e1;
           recipeId = editRecipe.id;
           await Promise.all([
@@ -1614,7 +1639,7 @@ function ManualScreen({ onNavigate, user, onSaved, editRecipe, initialData }) {
             sb.from('steps').delete().eq('recipe_id', recipeId),
           ]);
         } else {
-          const { data: recipe, error: e1 } = await sb.from('recipes').insert({ title: title.trim(), author_id: user.id, time_text: timeText, servings: parseInt(servings) || 2, color: '#E8C36E', accent: '#2F2A2A', ...(sourceUrl ? { source_url: sourceUrl } : {}), ...(imageUrl ? { image_url: imageUrl } : {}) }).select().single();
+          const { data: recipe, error: e1 } = await sb.from('recipes').insert({ title: title.trim(), author_id: user.id, time_text: normalizeTimeText(timeText), servings: parseInt(servings) || 2, color: '#E8C36E', accent: '#2F2A2A', ...(sourceUrl ? { source_url: sourceUrl } : {}), ...(imageUrl ? { image_url: imageUrl } : {}) }).select().single();
           if (e1) throw e1;
           recipeId = recipe.id;
         }
@@ -1977,7 +2002,7 @@ function ScanScreen({ onNavigate, onExtracted }) {
 // ╭─────────────────────────────────────────────────────────────────────────╮
 // │  Cooking screen                                                         │
 // ╰─────────────────────────────────────────────────────────────────────────╯
-function CookingScreen({ recipe, user, onNavigate, onDeleted, onEdit, saved, toggleSave, onComplete }) {
+function CookingScreen({ recipe, user, isAdmin = false, onNavigate, onDeleted, onEdit, saved, toggleSave, onComplete }) {
   const [detail, setDetail]             = useState(null);
   const [stepIdx, setStepIdx]           = useState(0);
   const [serves, setServes]             = useState(2);
@@ -1991,7 +2016,7 @@ function CookingScreen({ recipe, user, onNavigate, onDeleted, onEdit, saved, tog
   const wakelockRef                     = useRef(null);
 
   const r = recipe || {};
-  const isOwner = CONFIGURED && user?.id && r.author_id && user.id === r.author_id;
+  const isOwner = (CONFIGURED && user?.id && r.author_id && user.id === r.author_id) || isAdmin;
   const isSaved = saved?.has(r.id);
 
   // Release wake lock on unmount
@@ -2258,14 +2283,14 @@ function useWindowWidth() {
 // ╭─────────────────────────────────────────────────────────────────────────╮
 // │  Desktop recipe detail panel                                            │
 // ╰─────────────────────────────────────────────────────────────────────────╯
-function DesktopRecipeDetail({ recipe, user, onClose, onDeleted, onEdit, saved, toggleSave }) {
+function DesktopRecipeDetail({ recipe, user, isAdmin = false, onClose, onDeleted, onEdit, saved, toggleSave }) {
   const [detail, setDetail]         = useState(null);
   const [serves, setServes]         = useState(2);
   const [activeTab, setActiveTab]   = useState('steps');
   const [confirmDel, setConfirmDel] = useState(false);
   const [deleting, setDeleting]     = useState(false);
 
-  const isOwner = CONFIGURED && user?.id && recipe?.author_id && user.id === recipe.author_id;
+  const isOwner = (CONFIGURED && user?.id && recipe?.author_id && user.id === recipe.author_id) || isAdmin;
   const isSaved = saved?.has(recipe?.id);
 
   useEffect(() => {
@@ -2399,7 +2424,7 @@ function DesktopRecipeDetail({ recipe, user, onClose, onDeleted, onEdit, saved, 
 // ╭─────────────────────────────────────────────────────────────────────────╮
 // │  Desktop layout                                                         │
 // ╰─────────────────────────────────────────────────────────────────────────╯
-function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave, initialScreen = 'home' }) {
+function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave, initialScreen = 'home', isAdmin = false }) {
   const [screen, setScreen]                 = useState(initialScreen);
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [editRecipe, setEditRecipe]         = useState(null);
@@ -2599,7 +2624,7 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave, init
       {/* Detail panel */}
       {showDetail && (
         <div style={{ width: 380, background: P.paper, borderLeft: `2px solid ${P.ink}`, display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
-          <DesktopRecipeDetail recipe={selectedRecipe} user={user} onClose={() => setSelectedRecipe(null)} onDeleted={afterDeleted} onEdit={openEdit} saved={saved} toggleSave={toggleSave} />
+          <DesktopRecipeDetail recipe={selectedRecipe} user={user} isAdmin={isAdmin} onClose={() => setSelectedRecipe(null)} onDeleted={afterDeleted} onEdit={openEdit} saved={saved} toggleSave={toggleSave} />
         </div>
       )}
     </div>
@@ -2710,6 +2735,7 @@ function App() {
   const user                                    = useAuth();
   const { recipes, loading, reload }            = useRecipes();
   const { saved, toggleSave }                   = useSaves(user);
+  const isAdmin                                 = useIsAdmin(user);
   const [screen, setScreen]                     = useState('home');
   const [selectedRecipe, setSelectedRecipe]     = useState(null);
   const [editRecipe, setEditRecipe]             = useState(null);
@@ -2813,7 +2839,7 @@ function App() {
   }
 
   if (isDesktop) {
-    return <DesktopLayout user={user} recipes={recipes} loading={loading} reload={reload} saved={saved} toggleSave={toggleSave} initialScreen={screen} />;
+    return <DesktopLayout user={user} recipes={recipes} loading={loading} reload={reload} saved={saved} toggleSave={toggleSave} initialScreen={screen} isAdmin={isAdmin} />;
   }
 
   return (
@@ -2827,7 +2853,7 @@ function App() {
         {screen === 'manual'  && <ManualScreen onNavigate={navigate} user={user} editRecipe={editRecipe} initialData={draftRecipe} onSaved={() => { setDraftRecipe(null); setEditRecipe(null); afterSaved(); }} />}
         {screen === 'link'    && <LinkScreen   onNavigate={navigate} user={user} onSaved={reload} onExtracted={data => { setDraftRecipe(data); setScreen('manual'); }} />}
         {screen === 'scan'    && <ScanScreen   onNavigate={navigate} onExtracted={data => { setDraftRecipe(data); setScreen('manual'); }} />}
-        {screen === 'cooking' && <CookingScreen recipe={selectedRecipe} user={user} onNavigate={navigate} onDeleted={afterDeleted} onEdit={openEdit} saved={saved} toggleSave={toggleSave} onComplete={reload} />}
+        {screen === 'cooking' && <CookingScreen recipe={selectedRecipe} user={user} isAdmin={isAdmin} onNavigate={navigate} onDeleted={afterDeleted} onEdit={openEdit} saved={saved} toggleSave={toggleSave} onComplete={reload} />}
       </Phone>
     </div>
   );
