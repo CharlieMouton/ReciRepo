@@ -2629,9 +2629,13 @@ function OnboardingScreen({ user, onDone, desktop = false }) {
           {/* Body — each sentence on its own, visually prominent */}
           <div style={{ marginTop: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={{ font: body(desktop ? 17 : 16, 700), color: P.ink, lineHeight: 1.45 }}>
-              save recipes from anywhere by pasting a link, scanning a page, or writing up the recipe yourself.
+              save recipes from anywhere by{' '}
+              <span style={{ color: P.red }}>pasting a link</span>,{' '}
+              <span style={{ color: P.red }}>scanning a page</span>, or{' '}
+              <span style={{ color: P.red }}>writing up</span>{' '}
+              the recipe yourself.
             </div>
-            <div style={{ font: body(desktop ? 16 : 15, 500), color: P.ink, opacity: 0.5, lineHeight: 1.45 }}>
+            <div style={{ font: body(desktop ? 17 : 16, 700), color: P.ink, lineHeight: 1.45 }}>
               browse other recipes and cook step-by-step.
             </div>
           </div>
