@@ -2593,7 +2593,7 @@ function OnboardingScreen({ user, onDone, desktop = false }) {
   const [step, setStep] = useState(0);
 
   const progressDots = (
-    <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 12 }}>
+    <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 40, marginBottom: 16 }}>
       {[0, 1].map(i => (
         <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: i <= step ? P.ink : `${P.ink}30`, transition: 'background 0.2s' }} />
       ))}
@@ -2637,7 +2637,7 @@ function OnboardingScreen({ user, onDone, desktop = false }) {
           </div>
 
           {/* Push dots + button to bottom */}
-          <div style={{ flex: 1 }} />
+          <div style={{ flex: 1}} />
 
           {progressDots}
           <div onClick={() => setStep(1)}
