@@ -703,12 +703,39 @@ function Phone({ children, dark = false }) {
 // │  Auth screen                                                            │
 // ╰─────────────────────────────────────────────────────────────────────────╯
 function AuthScreen({ compact = false }) {
-  const [tab, setTab]         = useState('signin');
-  const [email, setEmail]     = useState('');
-  const [password, setPass]   = useState('');
-  const [username, setUname]  = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState('');
+  const [tab, setTab]             = useState('signin');
+  const [email, setEmail]         = useState('');
+  const [password, setPass]       = useState('');
+  const [username, setUname]      = useState('');
+  const [loading, setLoading]     = useState(false);
+  const [error, setError]         = useState('');
+  const [previewRecipes, setPrev] = useState(SAMPLE_RECIPES.slice(0, 4));
+
+  useEffect(() => {
+    if (!CONFIGURED || compact) return;
+    (async () => {
+      // Prefer recipes with cover images; fall back to any recent recipes if <4 images exist
+      let { data } = await sb.from('recipes_with_meta')
+        .select('id, title, author_username, time_text, image_url, color, accent')
+        .not('image_url', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(4);
+      if (!data || data.length < 4) {
+        const { data: any } = await sb.from('recipes_with_meta')
+          .select('id, title, author_username, time_text, image_url, color, accent')
+          .order('created_at', { ascending: false })
+          .limit(4);
+        data = any;
+      }
+      if (data && data.length > 0) {
+        setPrev(data.map(r => ({
+          id: r.id, title: r.title, author: r.author_username,
+          time: r.time_text || '', image_url: r.image_url || null,
+          color: r.color || '#E8C36E', accent: r.accent || '#2F2A2A',
+        })));
+      }
+    })();
+  }, []);
 
   async function submit() {
     if (!email || !password) { setError('email and password required'); return; }
@@ -736,7 +763,7 @@ function AuthScreen({ compact = false }) {
         <>
           <div style={{ position: 'relative', flexShrink: 0, padding: '50px 14px 0' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, pointerEvents: 'none', userSelect: 'none' }}>
-              {SAMPLE_RECIPES.slice(0, 4).map((r, i) => (
+              {previewRecipes.map((r, i) => (
                 <div key={r.id} style={{ borderRadius: 12, overflow: 'hidden', border: `1.5px solid ${P.ink}`, height: 96, boxShadow: `2px 2px 0 ${P.ink}`, transform: `rotate(${rots[i]}deg)` }}>
                   <div style={{ position: 'relative', width: '100%', height: '100%' }}>
                     <RecipeCover url={r.image_url} color={r.color} accent={r.accent} />
