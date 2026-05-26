@@ -1827,7 +1827,10 @@ function ProfileScreen({ onNavigate, onOpenRecipe, user, recipes }) {
     <>
       <div style={{ padding: '8px 20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Wordmark />
-        <Eyebrow>you</Eyebrow>
+        {CONFIGURED && user
+          ? <div onClick={() => sb.auth.signOut()} style={{ font: mono(10, 600), letterSpacing: 1.5, textTransform: 'uppercase', color: P.ink, opacity: 0.5, cursor: 'pointer' }}>sign out</div>
+          : <Eyebrow>you</Eyebrow>
+        }
       </div>
       <div style={{ padding: '20px 20px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
         <Avatar name={username} size={68} />
@@ -1850,13 +1853,6 @@ function ProfileScreen({ onNavigate, onOpenRecipe, user, recipes }) {
           myRecipes.map(r => <RecipeCard key={r.id} r={r} onClick={() => onOpenRecipe(r)} />)
         )}
       </div>
-      {CONFIGURED && user && (
-        <div style={{ position: 'absolute', bottom: 100, left: 20, right: 20 }}>
-          <div onClick={() => sb.auth.signOut()} style={{ padding: '12px', textAlign: 'center', border: `2px solid ${P.ink}`, borderRadius: 14, font: body(14, 700), cursor: 'pointer', color: P.ink, opacity: 0.55, background: P.bg }}>
-            sign out
-          </div>
-        </div>
-      )}
       <TabBar active="profile" onNavigate={onNavigate} />
     </>
   );
