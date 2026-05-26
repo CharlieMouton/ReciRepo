@@ -230,10 +230,22 @@ function mergeIngredientLines(lines) {
 }
 
 async function extractRecipeFromUrl(url) {
-  const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
-  if (!res.ok) throw new Error('could not reach that page');
-  const { contents } = await res.json();
-  if (!contents) throw new Error('empty response from page');
+  // Try allorigins first; fall back to corsproxy.io for Cloudflare-protected sites
+  let contents = null;
+  try {
+    const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
+    if (res.ok) {
+      const json = await res.json();
+      if (json.contents) contents = json.contents;
+    }
+  } catch {}
+  if (!contents) {
+    try {
+      const res = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(url)}`);
+      if (res.ok) contents = await res.text();
+    } catch {}
+  }
+  if (!contents) throw new Error('couldn\'t reach that page — the site may block imports');
 
   // Find all JSON-LD blocks
   const scripts = [...contents.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
@@ -2577,46 +2589,70 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave }) {
 // ╭─────────────────────────────────────────────────────────────────────────╮
 // │  Onboarding screen (shown once per browser to new authenticated users)  │
 // ╰─────────────────────────────────────────────────────────────────────────╯
-function OnboardingScreen({ user, onDone }) {
+function OnboardingScreen({ user, onDone, desktop = false }) {
   const [step, setStep] = useState(0);
 
-  const dots = (
-    <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
+  const progressDots = (
+    <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 12 }}>
       {[0, 1].map(i => (
-        <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: i <= step ? P.ink : `${P.ink}33`, transition: 'background 0.2s' }} />
+        <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: i <= step ? P.ink : `${P.ink}30`, transition: 'background 0.2s' }} />
       ))}
     </div>
   );
 
   const cards = [
-    { icon: 'home', title: 'browse recipes', sub: 'explore the feed',   bg: P.bg,  color: P.ink, to: null    },
-    { icon: 'plus', title: 'add a recipe',   sub: 'type, scan or paste', bg: P.red, color: P.bg,  to: 'sheet' },
+    { icon: 'home', title: 'browse recipes', sub: 'explore the feed',    bg: P.bg,  color: P.ink, to: null    },
+    { icon: 'plus', title: 'add a recipe',   sub: 'type, scan or paste',  bg: P.red, color: P.bg,  to: 'sheet' },
   ];
 
+  // Mobile: subtract phone's 44px top spacer so content never clips at bottom.
+  // Desktop: no phone shell, height is auto inside a fixed-size modal.
+  const outerStyle = desktop
+    ? { display: 'flex', flexDirection: 'column', background: P.bg, padding: '36px 36px 28px' }
+    : { height: 'calc(100% - 44px)', display: 'flex', flexDirection: 'column', background: P.bg, padding: '28px 26px 20px' };
+
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: P.bg, padding: '16px 28px', overflowY: 'auto' }}>
-      <Wordmark size={20} />
-      {dots}
+    <div style={outerStyle}>
+
+      {/* ── Wordmark — large, centred ── */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: desktop ? 32 : 24 }}>
+        <Wordmark size={desktop ? 30 : 28} />
+      </div>
 
       {step === 0 ? (
         <>
-          <div style={{ marginTop: 28, font: disp(40, 800), letterSpacing: -1.4, color: P.ink, lineHeight: 0.92 }}>
+          {/* Headline */}
+          <div style={{ font: disp(desktop ? 46 : 38, 800), letterSpacing: -1.4, color: P.ink, lineHeight: 0.9 }}>
             our recipes,<br />to share.
           </div>
-          <div style={{ marginTop: 20, font: body(14), color: P.ink, opacity: 0.65, lineHeight: 1.6 }}>
-            save recipes from anywhere — paste a link, scan a page, or write it yourself. browse other recipes and cook step-by-step.
+
+          {/* Body — each sentence on its own, visually prominent */}
+          <div style={{ marginTop: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ font: body(desktop ? 17 : 16, 700), color: P.ink, lineHeight: 1.45 }}>
+              save recipes from anywhere by pasting a link, scanning a page, or writing up the recipe yourself.
+            </div>
+            <div style={{ font: body(desktop ? 16 : 15, 500), color: P.ink, opacity: 0.5, lineHeight: 1.45 }}>
+              browse other recipes and cook step-by-step.
+            </div>
           </div>
+
+          {/* Push dots + button to bottom */}
           <div style={{ flex: 1 }} />
+
+          {progressDots}
           <div onClick={() => setStep(1)}
-            style={{ padding: '16px', background: P.ink, color: P.bg, borderRadius: 16, font: disp(20), letterSpacing: -0.3, textAlign: 'center', cursor: 'pointer', boxShadow: `4px 4px 0 ${P.red}`, marginBottom: 8 }}>
+            style={{ padding: '16px', background: P.ink, color: P.bg, borderRadius: 16, font: disp(20), letterSpacing: -0.3, textAlign: 'center', cursor: 'pointer', boxShadow: `4px 4px 0 ${P.red}` }}>
             next →
           </div>
         </>
       ) : (
         <>
-          <div style={{ marginTop: 28, font: disp(38, 800), letterSpacing: -1.2, color: P.ink, lineHeight: 0.92 }}>
+          {/* Step 2 headline */}
+          <div style={{ font: disp(desktop ? 40 : 34, 800), letterSpacing: -1.2, color: P.ink, lineHeight: 0.92 }}>
             where do you<br />want to start?
           </div>
+
+          {/* Method cards */}
           <div style={{ marginTop: 28, display: 'flex', flexDirection: 'column', gap: 10 }}>
             {cards.map(c => (
               <div key={c.title} onClick={() => onDone(c.to)}
@@ -2631,6 +2667,11 @@ function OnboardingScreen({ user, onDone }) {
                 <Icon name="arrow" size={20} />
               </div>
             ))}
+          </div>
+
+          {/* Dots below cards on step 2 */}
+          <div style={{ marginTop: 24 }}>
+            {progressDots}
           </div>
         </>
       )}
@@ -2724,6 +2765,17 @@ function App() {
   }
 
   if (showOnboarding && user) {
+    if (isDesktop) {
+      return (
+        <div style={{ width: '100vw', height: '100dvh', background: P.paper, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {/* Subtle grid pattern on the backdrop */}
+          <div style={{ position: 'absolute', inset: 0, backgroundImage: `repeating-linear-gradient(0deg, ${P.ink}09 0 1px, transparent 1px 48px), repeating-linear-gradient(90deg, ${P.ink}09 0 1px, transparent 1px 48px)`, pointerEvents: 'none' }} />
+          <div style={{ position: 'relative', width: 480, background: P.bg, border: `2.5px solid ${P.ink}`, borderRadius: 24, boxShadow: `8px 8px 0 ${P.ink}`, overflow: 'hidden' }}>
+            <OnboardingScreen user={user} onDone={finishOnboarding} desktop />
+          </div>
+        </div>
+      );
+    }
     return (
       <div style={{ width: '100vw', height: '100dvh', background: '#1a1815', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Phone>
