@@ -690,7 +690,7 @@ function Phone({ children, dark = false }) {
 // ╭─────────────────────────────────────────────────────────────────────────╮
 // │  Auth screen                                                            │
 // ╰─────────────────────────────────────────────────────────────────────────╯
-function AuthScreen() {
+function AuthScreen({ compact = false }) {
   const [tab, setTab]         = useState('signin');
   const [email, setEmail]     = useState('');
   const [password, setPass]   = useState('');
@@ -719,33 +719,34 @@ function AuthScreen() {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', background: P.bg }}>
 
-      {/* ── Recipe preview grid ───────────────────────────────────────────── */}
-      <div style={{ position: 'relative', flexShrink: 0, padding: '50px 14px 0' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, pointerEvents: 'none', userSelect: 'none' }}>
-          {SAMPLE_RECIPES.slice(0, 4).map((r, i) => (
-            <div key={r.id} style={{ borderRadius: 12, overflow: 'hidden', border: `1.5px solid ${P.ink}`, height: 96, boxShadow: `2px 2px 0 ${P.ink}`, transform: `rotate(${rots[i]}deg)` }}>
-              <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-                <RecipeCover url={r.image_url} color={r.color} accent={r.accent} />
-                {/* Caption overlay */}
-                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '22px 8px 7px', background: 'linear-gradient(transparent, rgba(0,0,0,0.62))' }}>
-                  <div style={{ font: `700 11px/1.2 'Bricolage Grotesque', sans-serif`, color: '#fff', letterSpacing: -0.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</div>
-                  <div style={{ font: `500 9px/1 'IBM Plex Mono', monospace`, color: 'rgba(255,255,255,0.7)', letterSpacing: 0.3, marginTop: 2 }}>by {r.author} · {r.time}</div>
+      {/* ── Recipe preview grid (mobile only) ────────────────────────────── */}
+      {!compact && (
+        <>
+          <div style={{ position: 'relative', flexShrink: 0, padding: '50px 14px 0' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, pointerEvents: 'none', userSelect: 'none' }}>
+              {SAMPLE_RECIPES.slice(0, 4).map((r, i) => (
+                <div key={r.id} style={{ borderRadius: 12, overflow: 'hidden', border: `1.5px solid ${P.ink}`, height: 96, boxShadow: `2px 2px 0 ${P.ink}`, transform: `rotate(${rots[i]}deg)` }}>
+                  <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                    <RecipeCover url={r.image_url} color={r.color} accent={r.accent} />
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '22px 8px 7px', background: 'linear-gradient(transparent, rgba(0,0,0,0.62))' }}>
+                      <div style={{ font: `700 11px/1.2 'Bricolage Grotesque', sans-serif`, color: '#fff', letterSpacing: -0.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</div>
+                      <div style={{ font: `500 9px/1 'IBM Plex Mono', monospace`, color: 'rgba(255,255,255,0.7)', letterSpacing: 0.3, marginTop: 2 }}>by {r.author} · {r.time}</div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
-        {/* Fade out into the form below */}
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 52, background: `linear-gradient(to bottom, transparent, ${P.bg})`, pointerEvents: 'none' }} />
-      </div>
-
-      {/* Wordmark — floats over the top-left of the preview grid */}
-      <div style={{ position: 'absolute', top: 14, left: 16, zIndex: 2 }}>
-        <Wordmark size={20} />
-      </div>
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 52, background: `linear-gradient(to bottom, transparent, ${P.bg})`, pointerEvents: 'none' }} />
+          </div>
+          {/* Wordmark — floats over the top-left of the preview grid */}
+          <div style={{ position: 'absolute', top: 14, left: 16, zIndex: 2 }}>
+            <Wordmark size={20} />
+          </div>
+        </>
+      )}
 
       {/* ── Auth form ─────────────────────────────────────────────────────── */}
-      <div style={{ flex: 1, padding: '22px 26px 24px', overflowY: 'auto' }}>
+      <div style={{ flex: 1, padding: compact ? '44px 32px 28px' : '22px 26px 24px', overflowY: 'auto' }}>
         <div style={{ font: `800 30px/0.9 'Bricolage Grotesque', sans-serif`, letterSpacing: -1.2, color: P.ink }}>
           {tab === 'signin' ? <>welcome<br/>back.</> : <>join the<br/>table.</>}
         </div>
@@ -2681,10 +2682,36 @@ function App() {
 
   if (CONFIGURED && !user) {
     if (isDesktop) {
+      const rots = [-1.2, 0.9, 0.7, -0.9];
       return (
-        <div style={{ width: '100vw', height: '100dvh', background: '#1a1815', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ width: 420, background: P.bg, border: `2px solid ${P.ink}`, borderRadius: 24, boxShadow: `8px 8px 0 ${P.ink}`, overflow: 'hidden' }}>
-            <div style={{ height: 520 }}><AuthScreen /></div>
+        <div style={{ width: '100vw', height: '100dvh', background: '#1a1815', display: 'flex', overflow: 'hidden' }}>
+          {/* ── Left: branding + recipe grid ── */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '48px 52px', minWidth: 0 }}>
+            {/* Wordmark in light colour */}
+            <div style={{ font: disp(28), letterSpacing: -1, color: P.bg, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+              <span>reci</span>
+              <span style={{ background: P.red, color: P.bg, padding: '3px 9px 4px', borderRadius: 6, transform: 'rotate(-1.5deg)', display: 'inline-block' }}>repo</span>
+            </div>
+            <div style={{ marginTop: 28, font: disp(42, 800), letterSpacing: -1.5, color: P.bg, lineHeight: 0.93, flexShrink: 0 }}>
+              our recipes,<br />to share.
+            </div>
+            {/* Recipe grid fills remaining height */}
+            <div style={{ flex: 1, marginTop: 36, display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: 14, minHeight: 0, pointerEvents: 'none', userSelect: 'none' }}>
+              {SAMPLE_RECIPES.slice(0, 4).map((r, i) => (
+                <div key={r.id} style={{ borderRadius: 16, overflow: 'hidden', border: `2px solid ${P.ink}`, boxShadow: `3px 3px 0 ${P.ink}`, transform: `rotate(${rots[i]}deg)`, position: 'relative' }}>
+                  <RecipeCover url={r.image_url} color={r.color} accent={r.accent}>
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '32px 12px 10px', background: 'linear-gradient(transparent, rgba(0,0,0,0.65))' }}>
+                      <div style={{ font: `700 14px/1.2 'Bricolage Grotesque', sans-serif`, color: '#fff', letterSpacing: -0.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</div>
+                      <div style={{ font: `500 10px/1 'IBM Plex Mono', monospace`, color: 'rgba(255,255,255,0.7)', marginTop: 3 }}>by {r.author} · {r.time}</div>
+                    </div>
+                  </RecipeCover>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* ── Right: auth form ── */}
+          <div style={{ width: 420, flexShrink: 0, background: P.bg, borderLeft: `2px solid ${P.ink}22`, overflow: 'hidden' }}>
+            <AuthScreen compact />
           </div>
         </div>
       );
