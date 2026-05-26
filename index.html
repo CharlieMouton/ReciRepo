@@ -2376,8 +2376,8 @@ function DesktopRecipeDetail({ recipe, user, onClose, onDeleted, onEdit, saved, 
 // ╭─────────────────────────────────────────────────────────────────────────╮
 // │  Desktop layout                                                         │
 // ╰─────────────────────────────────────────────────────────────────────────╯
-function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave }) {
-  const [screen, setScreen]                 = useState('home');
+function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave, initialScreen = 'home' }) {
+  const [screen, setScreen]                 = useState(initialScreen);
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [editRecipe, setEditRecipe]         = useState(null);
   const [draftRecipe, setDraftRecipe]       = useState(null);
@@ -2790,7 +2790,7 @@ function App() {
   }
 
   if (isDesktop) {
-    return <DesktopLayout user={user} recipes={recipes} loading={loading} reload={reload} saved={saved} toggleSave={toggleSave} />;
+    return <DesktopLayout user={user} recipes={recipes} loading={loading} reload={reload} saved={saved} toggleSave={toggleSave} initialScreen={screen} />;
   }
 
   return (
