@@ -2608,7 +2608,7 @@ function OnboardingScreen({ user, onDone, desktop = false }) {
   // Mobile: subtract phone's 44px top spacer so content never clips at bottom.
   // Desktop: no phone shell, height is auto inside a fixed-size modal.
   const outerStyle = desktop
-    ? { display: 'flex', flexDirection: 'column', background: P.bg, padding: '36px 36px 28px' }
+    ? { height: '100%', display: 'flex', flexDirection: 'column', background: P.bg, padding: '36px 36px 28px' }
     : { height: 'calc(100% - 44px)', display: 'flex', flexDirection: 'column', background: P.bg, padding: '28px 26px 20px' };
 
   return (
@@ -2774,7 +2774,7 @@ function App() {
         <div style={{ width: '100vw', height: '100dvh', background: P.paper, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {/* Subtle grid pattern on the backdrop */}
           <div style={{ position: 'absolute', inset: 0, backgroundImage: `repeating-linear-gradient(0deg, ${P.ink}09 0 1px, transparent 1px 48px), repeating-linear-gradient(90deg, ${P.ink}09 0 1px, transparent 1px 48px)`, pointerEvents: 'none' }} />
-          <div style={{ position: 'relative', width: 480, background: P.bg, border: `2.5px solid ${P.ink}`, borderRadius: 24, boxShadow: `8px 8px 0 ${P.ink}`, overflow: 'hidden' }}>
+          <div style={{ position: 'relative', width: 480, height: 480, background: P.bg, border: `2.5px solid ${P.ink}`, borderRadius: 24, boxShadow: `8px 8px 0 ${P.ink}`, overflow: 'hidden' }}>
             <OnboardingScreen user={user} onDone={finishOnboarding} desktop />
           </div>
         </div>
