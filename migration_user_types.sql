@@ -5,8 +5,8 @@
 -- ── 1. Add type columns to profiles ───────────────────────────────────────
 alter table public.profiles
   add column if not exists is_admin  boolean default false,
-  add column if not exists is_friend boolean default false,
-  add column if not exists is_family boolean default false;
+  add column if not exists is_friend boolean default true,
+  add column if not exists is_family boolean default true;
 
 -- ── 2. Helper function (SECURITY DEFINER to avoid RLS recursion) ──────────
 create or replace function public.is_admin()

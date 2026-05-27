@@ -9,8 +9,8 @@ create table public.profiles (
   id         uuid references auth.users on delete cascade primary key,
   username   text unique not null,
   is_admin   boolean default false,
-  is_friend  boolean default false,
-  is_family  boolean default false,
+  is_friend  boolean default true,
+  is_family  boolean default true,
   created_at timestamptz default now()
 );
 alter table public.profiles enable row level security;
