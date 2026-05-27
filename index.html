@@ -650,7 +650,8 @@ function LinkOnlyCard({ r, onClick }) {
   const hostname = (() => { try { return new URL(r.source_url).hostname.replace(/^www\./, ''); } catch { return r.source_url || 'link'; } })();
   function openLink(e) {
     e.stopPropagation();
-    window.open(r.source_url, '_blank', 'noopener,noreferrer');
+    const url = r.source_url;
+    if (url && /^https?:\/\//i.test(url)) window.open(url, '_blank', 'noopener,noreferrer');
   }
   return (
     <div onClick={onClick} style={{ display: 'grid', gridTemplateColumns: '1fr 92px', gap: 12, padding: 10, background: P.bg, border: `2px solid ${P.ink}`, borderRadius: 12, boxShadow: `3px 3px 0 ${P.ink}`, alignItems: 'stretch', cursor: onClick ? 'pointer' : 'default', WebkitTapHighlightColor: 'transparent' }}>
