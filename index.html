@@ -51,30 +51,18 @@ const body = (sz, w = 500) => `${w} ${sz}px/1.35 'Hanken Grotesk', sans-serif`;
 
 // ── Sample data (shown when Supabase is not yet configured) ────────────────
 const SAMPLE_RECIPES = [
-  { id: 'cacio',  title: 'Cacio e Pepe',               author: 'maya',   time: '20 min', servings: 2,  tags: ['pasta','weeknight'],  color: '#E8C36E', accent: '#2F2A2A', cooks: 14,
-    image_url: 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=400&h=300&fit=crop',
-    ingredients: [{ qty: '200g', item: 'spaghetti' }, { qty: '2 tsp', item: 'cracked black pepper' }, { qty: '60g', item: 'Pecorino Romano' }, { qty: '30g', item: 'Parmigiano Reggiano' }] },
-  { id: 'eggs',   title: 'Chili crisp eggs over rice',  author: 'daniel', time: '12 min', servings: 1,  tags: ['breakfast','spicy'],  color: '#C2562E', accent: '#FCEDE2', cooks: 31,
-    image_url: 'https://images.unsplash.com/photo-1525351484163-7529414344d8?w=400&h=300&fit=crop',
-    ingredients: [{ qty: '2', item: 'eggs' }, { qty: '1 cup', item: 'cooked rice' }, { qty: '1 tbsp', item: 'chili crisp' }, { qty: '1 tsp', item: 'soy sauce' }, { qty: '1', item: 'spring onion' }] },
-  { id: 'short',  title: 'Burnt honey shortbread',      author: 'priya',  time: '45 min', servings: 20, tags: ['dessert','bake'],     color: '#8E4A1E', accent: '#FCEDE2', cooks:  7,
-    image_url: 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=400&h=300&fit=crop',
-    ingredients: [{ qty: '225g', item: 'butter' }, { qty: '100g', item: 'honey' }, { qty: '300g', item: 'plain flour' }, { qty: '½ tsp', item: 'flaky salt' }, { qty: '1 tsp', item: 'vanilla extract' }] },
-  { id: 'cuke',   title: 'Smashed cucumber salad',      author: 'jordan', time: '10 min', servings: 4,  tags: ['side','vegan'],       color: '#6B7A3E', accent: '#FCEDE2', cooks: 22,
-    image_url: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&h=300&fit=crop',
-    ingredients: [{ qty: '2', item: 'cucumbers' }, { qty: '2 tbsp', item: 'rice vinegar' }, { qty: '1 tbsp', item: 'sesame oil' }, { qty: '1 tbsp', item: 'soy sauce' }, { qty: '2 cloves', item: 'garlic' }, { qty: '1 tsp', item: 'chili flakes' }] },
-  { id: 'tahdig', title: 'Saffron tahdig',              author: 'layla',  time: '1 h 15', servings: 4,  tags: ['rice','persian'],     color: '#D94F4F', accent: '#FCEDE2', cooks:  9,
-    image_url: 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=400&h=300&fit=crop',
-    ingredients: [{ qty: '2 cups', item: 'basmati rice' }, { qty: '¼ tsp', item: 'saffron threads' }, { qty: '3 tbsp', item: 'butter' }, { qty: '2 tbsp', item: 'vegetable oil' }, { qty: '1½ tsp', item: 'salt' }] },
-  { id: 'ramen',  title: 'Miso brown-butter ramen',     author: 'theo',   time: '25 min', servings: 2,  tags: ['soup','cozy'],        color: '#3B3A2E', accent: '#F6C26B', cooks: 18,
-    image_url: 'https://images.unsplash.com/photo-1569050467447-ce54b3bbc37d?w=400&h=300&fit=crop',
-    ingredients: [{ qty: '2 packs', item: 'instant ramen noodles' }, { qty: '2 tbsp', item: 'white miso paste' }, { qty: '3 tbsp', item: 'butter' }, { qty: '4 cups', item: 'chicken broth' }, { qty: '2', item: 'eggs' }, { qty: '1', item: 'spring onion' }] },
-  { id: 'lassi',  title: 'Strawberry lassi',            author: 'riya',   time: '5 min',  servings: 2,  tags: ['drink'],              color: '#F2A2A2', accent: '#2F2A2A', cooks: 12,
-    image_url: 'https://images.unsplash.com/photo-1553361371-9b22f78e8b1d?w=400&h=300&fit=crop',
-    ingredients: [{ qty: '1 cup', item: 'plain yogurt' }, { qty: '1 cup', item: 'fresh strawberries' }, { qty: '2 tbsp', item: 'honey' }, { qty: '½ cup', item: 'milk' }, { qty: '¼ tsp', item: 'cardamom' }] },
-  { id: 'dump',   title: 'Crispy rice-paper dumplings', author: 'wen',    time: '35 min', servings: 4,  tags: ['snack','crunchy'],    color: '#E89B5A', accent: '#2B2A26', cooks: 27,
-    image_url: 'https://images.unsplash.com/photo-1496116218422-5a2ca7abf8a1?w=400&h=300&fit=crop',
-    ingredients: [{ qty: '8', item: 'round rice paper wrappers' }, { qty: '200g', item: 'ground pork' }, { qty: '2 cloves', item: 'garlic' }, { qty: '1 tbsp', item: 'soy sauce' }, { qty: '1 tsp', item: 'sesame oil' }] },
+  { id: 'e32496cc-bfc5-478b-be8c-87bea6d209d5', title: 'Fiery tofu from burma superstar', author: 'Izzy',    time: '30m',  servings: 2, tags: [], color: '#E8C36E', accent: '#2F2A2A', cooks: 0,
+    image_url: 'https://ftpeschyehyftqsllarq.supabase.co/storage/v1/object/public/recipe-images/202088d0-18fb-41a8-98e6-5cca027eb52b/1779771069752.jpg',
+    ingredients: [] },
+  { id: 'e514c4c6-c641-4b27-9a26-c0437865bd4e', title: 'Creamy Corn and Potato Chowder',  author: 'Charlie', time: '40m',  servings: 2, tags: [], color: '#E8C36E', accent: '#2F2A2A', cooks: 0,
+    image_url: 'https://ftpeschyehyftqsllarq.supabase.co/storage/v1/object/public/recipe-images/e57d5596-a775-4ee0-86a9-b74342528bcd/1779689381482.png',
+    ingredients: [] },
+  { id: '6b70dc45-82d2-4536-8e6b-3baa7eb52ffc', title: 'Chicken Gumbo',                   author: 'Charlie', time: '90m',  servings: 6, tags: [], color: '#E8C36E', accent: '#2F2A2A', cooks: 0,
+    image_url: 'https://ftpeschyehyftqsllarq.supabase.co/storage/v1/object/public/recipe-images/e57d5596-a775-4ee0-86a9-b74342528bcd/1779688706314.jpg',
+    ingredients: [] },
+  { id: '38642423-99ea-49df-a2fb-8a320786706e', title: 'Tortilla Casserole',               author: 'Charlie', time: '60m',  servings: 2, tags: [], color: '#E8C36E', accent: '#2F2A2A', cooks: 0,
+    image_url: 'https://ftpeschyehyftqsllarq.supabase.co/storage/v1/object/public/recipe-images/e57d5596-a775-4ee0-86a9-b74342528bcd/1779644290227.jpg',
+    ingredients: [] },
 ];
 
 const SAMPLE_DETAIL = {
@@ -437,7 +425,7 @@ function useAuth() {
   return user;
 }
 
-function useRecipes() {
+function useRecipes(user) {
   const [recipes, setRecipes] = useState(CONFIGURED ? [] : SAMPLE_RECIPES);
   const [loading, setLoading] = useState(CONFIGURED);
 
@@ -458,7 +446,9 @@ function useRecipes() {
     finally { setLoading(false); }
   }
 
-  useEffect(() => { load(); }, []);
+  // Wait for auth to resolve (user !== undefined) before fetching, so the request
+  // always carries the correct auth header. Re-runs on sign-in/sign-out.
+  useEffect(() => { if (user !== undefined) load(); }, [user?.id]);
   return { recipes, loading, reload: load };
 }
 
@@ -517,6 +507,7 @@ function Icon({ name, size = 20, stroke = 'currentColor', width = 2, style }) {
     case 'gallery':  return <svg {...p}><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="M21 17l-5-6-5 5-3-3-5 5"/></svg>;
     case 'flip':     return <svg {...p}><path d="M21 4v6h-6"/><path d="M3 20v-6h6"/><path d="M21 10A9 9 0 005 7M3 14a9 9 0 0016 3"/></svg>;
     case 'external': return <svg {...p}><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><path d="M15 3h6v6"/><path d="M10 14L21 3"/></svg>;
+    case 'group':    return <svg {...p}><circle cx="9" cy="8" r="3"/><path d="M3 21c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="8" r="3"/><path d="M21 21c0-3.3-2.7-6-6-6"/></svg>;
     default: return null;
   }
 }
@@ -728,38 +719,50 @@ function Phone({ children, dark = false }) {
 // │  Auth screen                                                            │
 // ╰─────────────────────────────────────────────────────────────────────────╯
 function AuthScreen({ compact = false }) {
-  const [tab, setTab]             = useState('signin');
+  const [tab, setTab]             = useState(() => localStorage.getItem('rr_onboarded') ? 'signin' : 'signup');
   const [email, setEmail]         = useState('');
   const [password, setPass]       = useState('');
   const [username, setUname]      = useState('');
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState('');
-  const [previewRecipes, setPrev] = useState(SAMPLE_RECIPES.slice(0, 4));
+  const [previewRecipes, setPrev] = useState([]);
+  const [recipesReady, setReady]  = useState(false);
 
   useEffect(() => {
-    if (!CONFIGURED || compact) return;
-    (async () => {
-      // Prefer recipes with cover images; fall back to any recent recipes if <4 images exist
-      let { data } = await sb.from('recipes_with_meta')
-        .select('id, title, author_username, time_text, image_url, color, accent')
-        .not('image_url', 'is', null)
-        .order('created_at', { ascending: false })
-        .limit(4);
-      if (!data || data.length < 4) {
-        const { data: any } = await sb.from('recipes_with_meta')
+    if (compact) return;
+    let done = false;
+    function show(recipes) { if (!done) { done = true; setPrev(recipes); setReady(true); } }
+
+    // Fallback: always animate in with sample recipes after 900ms if nothing else arrives first
+    const fallback = setTimeout(() => show(SAMPLE_RECIPES.slice(0, 4)), 900);
+
+    if (CONFIGURED) {
+      (async () => {
+        // Prefer recipes with cover images; fall back to any recent recipes if <4 images exist
+        let { data } = await sb.from('recipes_with_meta')
           .select('id, title, author_username, time_text, image_url, color, accent')
+          .not('image_url', 'is', null)
           .order('created_at', { ascending: false })
           .limit(4);
-        data = any;
-      }
-      if (data && data.length > 0) {
-        setPrev(data.map(r => ({
-          id: r.id, title: r.title, author: r.author_username,
-          time: r.time_text || '', image_url: r.image_url || null,
-          color: r.color || '#E8C36E', accent: r.accent || '#2F2A2A',
-        })));
-      }
-    })();
+        if (!data || data.length < 4) {
+          const { data: any } = await sb.from('recipes_with_meta')
+            .select('id, title, author_username, time_text, image_url, color, accent')
+            .order('created_at', { ascending: false })
+            .limit(4);
+          data = any;
+        }
+        if (data && data.length > 0) {
+          clearTimeout(fallback);
+          show(data.map(r => ({
+            id: r.id, title: r.title, author: r.author_username,
+            time: r.time_text || '', image_url: r.image_url || null,
+            color: r.color || '#E8C36E', accent: r.accent || '#2F2A2A',
+          })));
+        }
+      })();
+    }
+
+    return () => { done = true; clearTimeout(fallback); };
   }, []);
 
   async function submit() {
@@ -786,21 +789,30 @@ function AuthScreen({ compact = false }) {
       {/* ── Recipe preview grid (mobile only) ────────────────────────────── */}
       {!compact && (
         <>
-          <div style={{ position: 'relative', flexShrink: 0, padding: '50px 14px 0' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, pointerEvents: 'none', userSelect: 'none' }}>
-              {previewRecipes.map((r, i) => (
-                <div key={r.id} style={{ borderRadius: 12, overflow: 'hidden', border: `1.5px solid ${P.ink}`, height: 96, boxShadow: `2px 2px 0 ${P.ink}`, transform: `rotate(${rots[i]}deg)` }}>
-                  <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-                    <RecipeCover url={r.image_url} color={r.color} accent={r.accent} />
-                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '22px 8px 7px', background: 'linear-gradient(transparent, rgba(0,0,0,0.62))' }}>
-                      <div style={{ font: `700 11px/1.2 'Bricolage Grotesque', sans-serif`, color: '#fff', letterSpacing: -0.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</div>
-                      <div style={{ font: `500 9px/1 'IBM Plex Mono', monospace`, color: 'rgba(255,255,255,0.7)', letterSpacing: 0.3, marginTop: 2 }}>by {r.author} · {r.time}</div>
+          {/* Animated wrapper: collapses to 0 until real recipes arrive, then slides open */}
+          <div style={{
+            maxHeight: recipesReady ? '256px' : '0px',
+            opacity: recipesReady ? 1 : 0,
+            overflow: 'hidden',
+            flexShrink: 0,
+            transition: 'max-height 1.1s cubic-bezier(0.16,1,0.3,1), opacity 0.8s ease',
+          }}>
+            <div style={{ position: 'relative', padding: '50px 14px 0' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, pointerEvents: 'none', userSelect: 'none' }}>
+                {previewRecipes.map((r, i) => (
+                  <div key={r.id} style={{ borderRadius: 12, overflow: 'hidden', border: `1.5px solid ${P.ink}`, height: 96, boxShadow: `2px 2px 0 ${P.ink}`, transform: `rotate(${rots[i]}deg)` }}>
+                    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                      <RecipeCover url={r.image_url} color={r.color} accent={r.accent} />
+                      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '44px 8px 7px', background: 'linear-gradient(transparent, rgba(0,0,0,0.72))' }}>
+                        <div style={{ font: `700 11px/1.2 'Bricolage Grotesque', sans-serif`, color: '#fff', letterSpacing: -0.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</div>
+                        <div style={{ font: `500 9px/1 'IBM Plex Mono', monospace`, color: 'rgba(255,255,255,0.7)', letterSpacing: 0.3, marginTop: 2 }}>by {r.author} · {r.time}</div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 52, background: `linear-gradient(to bottom, transparent, ${P.bg})`, pointerEvents: 'none' }} />
             </div>
-            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 52, background: `linear-gradient(to bottom, transparent, ${P.bg})`, pointerEvents: 'none' }} />
           </div>
           {/* Wordmark — floats over the top-left of the preview grid */}
           <div style={{ position: 'absolute', top: 14, left: 16, zIndex: 2 }}>
@@ -810,7 +822,8 @@ function AuthScreen({ compact = false }) {
       )}
 
       {/* ── Auth form ─────────────────────────────────────────────────────── */}
-      <div style={{ flex: 1, padding: compact ? '44px 32px 28px' : '22px 26px 24px', overflowY: 'auto' }}>
+      {/* paddingTop transitions from 60px (clears wordmark while grid is hidden) to 22px (grid present) */}
+      <div style={{ flex: 1, padding: compact ? '44px 32px 28px' : `${recipesReady ? 22 : 60}px 26px 24px`, transition: !compact ? 'padding-top 1.1s cubic-bezier(0.16,1,0.3,1)' : undefined, overflowY: 'auto' }}>
         <div style={{ font: `800 30px/0.9 'Bricolage Grotesque', sans-serif`, letterSpacing: -1.2, color: P.ink }}>
           {tab === 'signin' ? <>welcome<br/>back.</> : <>join the<br/>table.</>}
         </div>
@@ -847,7 +860,6 @@ function AuthScreen({ compact = false }) {
           {!loading && <Icon name="arrow" size={18} stroke={P.bg} />}
         </div>
 
-        {tab === 'signup' && <div style={{ marginTop: 10, font: mono(10), opacity: 0.5, textAlign: 'center', letterSpacing: 0.3 }}>check your inbox to confirm your email</div>}
       </div>
     </div>
   );
@@ -979,7 +991,7 @@ function HomeScreen({ recipes, loading, onNavigate, onOpenRecipe, user, saved, t
       </div>
 
       {/* Filter chips */}
-      <div style={{ padding: '10px 20px 0', display: 'flex', gap: 7, overflowX: 'auto', scrollbarWidth: 'none' }}>
+      <div style={{ padding: '10px 20px', display: 'flex', gap: 7, overflowX: 'auto', scrollbarWidth: 'none' }}>
         {filterOpts.map(({ key, label }) => {
           const on = activeFilter === key || (key === null && activeFilter === null);
           return (
@@ -1225,7 +1237,7 @@ function SearchScreen({ recipes, loading, onNavigate, onOpenRecipe, user }) {
       </div>
 
       {/* Filter chips */}
-      <div style={{ padding: '10px 20px 0', display: 'flex', gap: 7, overflowX: 'auto', scrollbarWidth: 'none' }}>
+      <div style={{ padding: '10px 20px', display: 'flex', gap: 7, overflowX: 'auto', scrollbarWidth: 'none' }}>
         {filterOpts.map(({ key, label }) => {
           const on = activeFilter === key;
           return (
@@ -2422,6 +2434,86 @@ function DesktopRecipeDetail({ recipe, user, isAdmin = false, onClose, onDeleted
 }
 
 // ╭─────────────────────────────────────────────────────────────────────────╮
+// │  Admin: user management screen                                          │
+// ╰─────────────────────────────────────────────────────────────────────────╯
+function AdminUsersScreen({ currentUserId }) {
+  const [users, setUsers]     = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  async function loadUsers() {
+    const { data } = await sb.from('profiles')
+      .select('id, username, is_admin, is_friend, is_family')
+      .order('username');
+    if (data) setUsers(data);
+    setLoading(false);
+  }
+
+  useEffect(() => { if (CONFIGURED) loadUsers(); }, []);
+
+  async function toggle(userId, field, currentValue) {
+    await sb.from('profiles').update({ [field]: !currentValue }).eq('id', userId);
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, [field]: !currentValue } : u));
+  }
+
+  function TypeBadge({ label, active, color, onClick, disabled }) {
+    return (
+      <div
+        onClick={disabled ? undefined : onClick}
+        style={{
+          padding: '4px 12px', borderRadius: 20, border: `1.5px solid ${P.ink}`,
+          background: active ? color : 'transparent',
+          color: active ? (color === P.yellow ? P.ink : P.bg) : P.ink,
+          font: mono(10), letterSpacing: 1, textTransform: 'uppercase',
+          cursor: disabled ? 'default' : 'pointer',
+          opacity: disabled ? 0.35 : active ? 1 : 0.4,
+          transition: 'all 0.12s', userSelect: 'none',
+        }}
+      >{label}</div>
+    );
+  }
+
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px' }}>
+      <div style={{ font: `800 32px/0.9 'Bricolage Grotesque', sans-serif`, letterSpacing: -1.2, color: P.ink, marginBottom: 6 }}>
+        manage{' '}
+        <span style={{ position: 'relative', display: 'inline-block' }}>
+          users
+          <span style={{ position: 'absolute', left: 0, right: 0, bottom: -4, height: 8, background: P.red, zIndex: -1, transform: 'rotate(-1deg)' }} />
+        </span>.
+      </div>
+      <div style={{ font: mono(11), opacity: 0.5, letterSpacing: 0.3, marginBottom: 24 }}>
+        toggle friend / family access. changes take effect immediately.
+      </div>
+
+      {loading ? (
+        <div style={{ font: mono(11), opacity: 0.4, letterSpacing: 1.5, textTransform: 'uppercase' }}>loading…</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {/* Header row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 100px 80px', gap: 12, padding: '8px 14px', font: mono(10), opacity: 0.45, letterSpacing: 1.5, textTransform: 'uppercase' }}>
+            <span>user</span><span>friend</span><span>family</span><span>admin</span>
+          </div>
+          {users.map(u => (
+            <div key={u.id} style={{ display: 'grid', gridTemplateColumns: '1fr 100px 100px 80px', gap: 12, alignItems: 'center', padding: '12px 14px', borderRadius: 12, border: `1.5px solid ${P.ink}20`, background: u.id === currentUserId ? `${P.ink}06` : 'transparent' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Avatar name={u.username} size={30} />
+                <div>
+                  <div style={{ font: body(14, 700), color: P.ink }}>{u.username}</div>
+                  {u.id === currentUserId && <div style={{ font: mono(9), opacity: 0.4, letterSpacing: 0.5, marginTop: 2 }}>you</div>}
+                </div>
+              </div>
+              <TypeBadge label="friend" active={u.is_friend} color={P.red}    onClick={() => toggle(u.id, 'is_friend', u.is_friend)} />
+              <TypeBadge label="family" active={u.is_family} color={P.yellow} onClick={() => toggle(u.id, 'is_family', u.is_family)} />
+              <TypeBadge label="admin"  active={u.is_admin}  color={P.ink}    onClick={() => toggle(u.id, 'is_admin',  u.is_admin)}  disabled={u.id === currentUserId} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ╭─────────────────────────────────────────────────────────────────────────╮
 // │  Desktop layout                                                         │
 // ╰─────────────────────────────────────────────────────────────────────────╯
 function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave, initialScreen = 'home', isAdmin = false }) {
@@ -2459,6 +2551,7 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave, init
     { key: 'saved',   icon: 'bookmark', label: 'saved'   },
     { key: 'search',  icon: 'search',   label: 'search'  },
     { key: 'profile', icon: 'user',     label: 'profile' },
+    ...(isAdmin ? [{ key: 'users', icon: 'group', label: 'users' }] : []),
   ];
 
   const sheetOpts = [
@@ -2467,7 +2560,7 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave, init
     { icon: 'camera', title: 'snap a recipe', sub: 'cookbook page, card, screenshot', bg: P.red,    color: P.bg,  to: 'scan'   },
   ];
 
-  const showDetail = !!selectedRecipe && !['sheet','manual','link','scan'].includes(screen);
+  const showDetail = !!selectedRecipe && !['sheet','manual','link','scan','users'].includes(screen);
 
   return (
     <div style={{ display: 'flex', width: '100vw', height: '100dvh', background: '#1a1815', overflow: 'hidden' }}>
@@ -2586,6 +2679,10 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave, init
               }
             </div>
           </div>
+        )}
+
+        {screen === 'users' && isAdmin && (
+          <AdminUsersScreen currentUserId={user?.id} />
         )}
 
         {screen === 'sheet' && (
@@ -2733,7 +2830,7 @@ function OnboardingScreen({ user, onDone, desktop = false }) {
 
 function App() {
   const user                                    = useAuth();
-  const { recipes, loading, reload }            = useRecipes();
+  const { recipes, loading, reload }            = useRecipes(user);
   const { saved, toggleSave }                   = useSaves(user);
   const isAdmin                                 = useIsAdmin(user);
   const [screen, setScreen]                     = useState('home');

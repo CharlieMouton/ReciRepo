@@ -8,11 +8,24 @@ create extension if not exists "uuid-ossp";
 create table public.profiles (
   id         uuid references auth.users on delete cascade primary key,
   username   text unique not null,
+  is_admin   boolean default false,
+  is_friend  boolean default false,
+  is_family  boolean default false,
   created_at timestamptz default now()
 );
 alter table public.profiles enable row level security;
 create policy "Profiles are public"          on public.profiles for select using (true);
-create policy "Users can update own profile" on public.profiles for update using (auth.uid() = id);
+create policy "Users can update own profile" on public.profiles for update using (auth.uid() = id or public.is_admin());
+
+-- Helper: check if the current user is an admin (SECURITY DEFINER bypasses RLS to avoid recursion)
+create or replace function public.is_admin()
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select coalesce((select is_admin from public.profiles where id = auth.uid()), false);
+$$;
 
 -- Auto-create a profile row when a new user signs up.
 -- The username comes from the `username` key in user_metadata (sent during sign-up).
@@ -46,7 +59,21 @@ create table public.recipes (
   created_at timestamptz default now()
 );
 alter table public.recipes enable row level security;
-create policy "Recipes are public"             on public.recipes for select using (true);
+-- Recipes are visible when: viewer is the author, viewer is admin,
+-- or viewer's user type (friend/family) overlaps with the author's type.
+create policy "Recipes visible by user type" on public.recipes for select using (
+  author_id = auth.uid()
+  or public.is_admin()
+  or exists (
+    select 1 from public.profiles v
+    join public.profiles a on a.id = recipes.author_id
+    where v.id = auth.uid()
+      and (
+        (v.is_friend and a.is_friend)
+        or (v.is_family and a.is_family)
+      )
+  )
+);
 create policy "Authors can insert own recipes" on public.recipes for insert with check (auth.uid() = author_id);
 create policy "Authors can update own recipes" on public.recipes for update using (auth.uid() = author_id);
 create policy "Authors can delete own recipes" on public.recipes for delete using (auth.uid() = author_id);
@@ -58,7 +85,9 @@ create table public.recipe_tags (
   primary key (recipe_id, tag)
 );
 alter table public.recipe_tags enable row level security;
-create policy "Tags are public" on public.recipe_tags for select using (true);
+create policy "Tags visible if recipe visible" on public.recipe_tags for select using (
+  exists (select 1 from public.recipes where id = recipe_id)
+);
 create policy "Authors manage tags" on public.recipe_tags for all using (
   exists (select 1 from public.recipes where id = recipe_id and author_id = auth.uid())
 );
@@ -72,7 +101,9 @@ create table public.ingredients (
   sort_order int  default 0
 );
 alter table public.ingredients enable row level security;
-create policy "Ingredients are public"    on public.ingredients for select using (true);
+create policy "Ingredients visible if recipe visible" on public.ingredients for select using (
+  exists (select 1 from public.recipes where id = recipe_id)
+);
 create policy "Authors manage ingredients" on public.ingredients for all using (
   exists (select 1 from public.recipes where id = recipe_id and author_id = auth.uid())
 );
@@ -86,7 +117,9 @@ create table public.steps (
   sort_order    int  default 0
 );
 alter table public.steps enable row level security;
-create policy "Steps are public"    on public.steps for select using (true);
+create policy "Steps visible if recipe visible" on public.steps for select using (
+  exists (select 1 from public.recipes where id = recipe_id)
+);
 create policy "Authors manage steps" on public.steps for all using (
   exists (select 1 from public.recipes where id = recipe_id and author_id = auth.uid())
 );
@@ -114,8 +147,9 @@ create policy "Cook logs are public"    on public.cook_logs for select using (tr
 create policy "Users log own cooks"     on public.cook_logs for insert with check (auth.uid() = user_id);
 
 -- ── recipes_with_meta view ────────────────────────────────────────────────
+-- security_invoker = true ensures the recipe RLS policies are applied when this view is queried.
 -- Returned by the feed query — joins author username, cook count, and tags.
-create or replace view public.recipes_with_meta as
+create or replace view public.recipes_with_meta with (security_invoker = true) as
 select
   r.id,
   r.title,
