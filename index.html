@@ -39,6 +39,7 @@ const { useState, useEffect, useRef } = React;
 const SUPABASE_URL      = 'https://ftpeschyehyftqsllarq.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0cGVzY2h5ZWh5ZnRxc2xsYXJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1NTQ1NjQsImV4cCI6MjA5NTEzMDU2NH0.311PuMTEqVZAlRrnwMmf48HezxWFRJWs3-z4MoJKuVo';
 const CONFIGURED = !SUPABASE_URL.includes('YOUR_PROJECT');
+const DEMO_MODE  = new URLSearchParams(location.search).get('demo') === 'true';
 const sb = CONFIGURED ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 // Replace with your free key from ocr.space (current key is the public demo key)
 const OCR_SPACE_KEY = 'helloworld';
@@ -89,7 +90,7 @@ const FRAC_SYMS = [[3/4,'¾'],[2/3,'⅔'],[1/2,'½'],[1/3,'⅓'],[1/4,'¼'],[3/8
 function parseQtyNum(qty) {
   if (!qty) return { num: null, rest: '' };
   let s = qty.trim(); let num = 0; let matched = false;
-  const intM = s.match(/^(\d+)\s*/);
+  const intM = s.match(/^(\d+)(?!\s*\/)\s*/);
   if (intM) { num = parseInt(intM[1]); s = s.slice(intM[0].length); matched = true; }
   if (UNICODE_FRACS[s[0]] !== undefined) {
     num += UNICODE_FRACS[s[0]]; s = s.slice(1).trimStart(); matched = true;
@@ -413,10 +414,10 @@ async function extractRecipeFromImage(file) {
 
 // ── Hooks ──────────────────────────────────────────────────────────────────
 function useAuth() {
-  const [user, setUser] = useState(undefined); // undefined = still loading
+  const [user, setUser] = useState(DEMO_MODE ? null : undefined); // undefined = still loading
 
   useEffect(() => {
-    if (!CONFIGURED) { setUser(null); return; }
+    if (!CONFIGURED || DEMO_MODE) { setUser(null); return; }
     sb.auth.getSession().then(({ data: { session } }) => setUser(session?.user ?? null));
     const { data: { subscription } } = sb.auth.onAuthStateChange((_, session) => setUser(session?.user ?? null));
     return () => subscription.unsubscribe();
@@ -426,11 +427,11 @@ function useAuth() {
 }
 
 function useRecipes(user) {
-  const [recipes, setRecipes] = useState(CONFIGURED ? [] : SAMPLE_RECIPES);
-  const [loading, setLoading] = useState(CONFIGURED);
+  const [recipes, setRecipes] = useState((!CONFIGURED || DEMO_MODE) ? SAMPLE_RECIPES : []);
+  const [loading, setLoading] = useState(CONFIGURED && !DEMO_MODE);
 
   async function load() {
-    if (!CONFIGURED) return;
+    if (!CONFIGURED || DEMO_MODE) return;
     setLoading(true);
     try {
       const { data } = await sb.from('recipes_with_meta').select('*').order('created_at', { ascending: false });
@@ -455,13 +456,13 @@ function useRecipes(user) {
 function useSaves(user) {
   const [saved, setSaved] = useState(new Set());
   useEffect(() => {
-    if (!CONFIGURED || !user) return;
+    if (!CONFIGURED || DEMO_MODE || !user) return;
     sb.from('saves').select('recipe_id').eq('user_id', user.id)
       .then(({ data }) => setSaved(new Set((data || []).map(s => s.recipe_id))));
   }, [user?.id]);
   async function toggleSave(recipeId) {
     if (!recipeId) return;
-    if (!CONFIGURED || !user) return;
+    if (!CONFIGURED || DEMO_MODE || !user) return;
     const isSaved = saved.has(recipeId);
     setSaved(prev => { const n = new Set(prev); isSaved ? n.delete(recipeId) : n.add(recipeId); return n; });
     if (isSaved) {
@@ -476,7 +477,7 @@ function useSaves(user) {
 function useIsAdmin(user) {
   const [isAdmin, setIsAdmin] = useState(false);
   useEffect(() => {
-    if (!CONFIGURED || !user) { setIsAdmin(false); return; }
+    if (!CONFIGURED || DEMO_MODE || !user) { setIsAdmin(false); return; }
     sb.from('profiles').select('is_admin').eq('id', user.id).single()
       .then(({ data }) => setIsAdmin(data?.is_admin === true));
   }, [user?.id]);
@@ -597,9 +598,9 @@ function Eyebrow({ children, style }) {
   return <div style={{ font: mono(10, 600), letterSpacing: 2, textTransform: 'uppercase', color: P.ink, opacity: 0.7, ...style }}>{children}</div>;
 }
 
-function Wordmark({ size = 22 }) {
+function Wordmark({ size = 22, onClick }) {
   return (
-    <div style={{ font: disp(size), letterSpacing: -1, color: P.ink, display: 'flex', alignItems: 'center', gap: 2, fontStretch: '75%' }}>
+    <div onClick={onClick} style={{ font: disp(size), letterSpacing: -1, color: P.ink, display: 'flex', alignItems: 'center', gap: 2, fontStretch: '75%', cursor: onClick ? 'pointer' : 'default' }}>
       <span>reci</span>
       <span style={{ background: P.red, color: P.bg, padding: '2px 7px 3px', borderRadius: 5, transform: 'rotate(-1.5deg)', display: 'inline-block' }}>repo</span>
     </div>
@@ -618,7 +619,7 @@ const inputStyle = (extra = {}) => ({
 // ── Tab bar ────────────────────────────────────────────────────────────────
 function TabBar({ active, onNavigate }) {
   const items = [
-    { key: 'home',    icon: 'home',     label: 'feed'   },
+    { key: 'home',    icon: 'home',     label: 'home'   },
     { key: 'saved',   icon: 'bookmark', label: 'saved'  },
     { key: 'sheet',   icon: 'plus',     label: 'add', fab: true },
     { key: 'search',  icon: 'search',   label: 'search' },
@@ -861,6 +862,10 @@ function AuthScreen({ compact = false }) {
           {!loading && <Icon name="arrow" size={18} stroke={P.bg} />}
         </div>
 
+        <a href="/?demo=true" style={{ display: 'block', marginTop: 14, textAlign: 'center', font: mono(11), color: P.ink, opacity: 0.4, textDecoration: 'none', letterSpacing: 0.4 }}>
+          just browsing? try the demo →
+        </a>
+
       </div>
     </div>
   );
@@ -901,7 +906,7 @@ function HomeScreen({ recipes, loading, onNavigate, onOpenRecipe, user, saved, t
 
   // Debounced Supabase ingredient search for pantry filter
   useEffect(() => {
-    if (!CONFIGURED || activeFilter !== 'pantry' || !pantryQuery.trim()) { setPantryIds(null); return; }
+    if (!CONFIGURED || DEMO_MODE || activeFilter !== 'pantry' || !pantryQuery.trim()) { setPantryIds(null); return; }
     const timer = setTimeout(async () => {
       const { data } = await sb.from('ingredients').select('recipe_id').ilike('item', `%${pantryQuery.trim()}%`);
       setPantryIds(new Set((data || []).map(d => d.recipe_id)));
@@ -955,7 +960,7 @@ function HomeScreen({ recipes, loading, onNavigate, onOpenRecipe, user, saved, t
   return (
     <>
       <div style={{ padding: '8px 20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Wordmark />
+        <Wordmark onClick={() => onNavigate('home')} />
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <div onClick={() => onNavigate('saved')} style={{ width: 32, height: 32, borderRadius: '50%', border: `1.8px solid ${P.ink}`, display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
             <Icon name="bookmark" size={16} />
@@ -1177,7 +1182,7 @@ function SearchScreen({ recipes, loading, onNavigate, onOpenRecipe, user }) {
   }, [activeFilter]);
 
   useEffect(() => {
-    if (!CONFIGURED || activeFilter !== 'pantry' || !pantryQuery.trim()) { setPantryIds(null); return; }
+    if (!CONFIGURED || DEMO_MODE || activeFilter !== 'pantry' || !pantryQuery.trim()) { setPantryIds(null); return; }
     const timer = setTimeout(async () => {
       const { data } = await sb.from('ingredients').select('recipe_id').ilike('item', `%${pantryQuery.trim()}%`);
       setPantryIds(new Set((data || []).map(d => d.recipe_id)));
@@ -1388,7 +1393,7 @@ function LinkScreen({ onNavigate, user, onSaved, onExtracted }) {
     if (!fallbackName.trim() || saving) return;
     setSaving(true); setError('');
     try {
-      if (CONFIGURED && user) {
+      if (CONFIGURED && !DEMO_MODE && user) {
         const { error: e } = await sb.from('recipes').insert({
           title: fallbackName.trim(), author_id: user.id, source_url: fallback.url, color: '#C2562E', accent: '#FCEDE2',
         });
@@ -1449,7 +1454,7 @@ function LinkScreen({ onNavigate, user, onSaved, onExtracted }) {
               {CONFIGURED ? 'bookmark added to your feed.' : 'link captured · connect Supabase to persist it.'}
             </div>
             <div onClick={() => onNavigate('home')} style={{ marginTop: 14, display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 14px', background: P.ink, color: P.bg, borderRadius: 999, cursor: 'pointer', font: body(13, 700) }}>
-              back to feed <Icon name="arrow" size={16} stroke={P.bg} />
+              back to home <Icon name="arrow" size={16} stroke={P.bg} />
             </div>
           </div>
         )}
@@ -1561,7 +1566,7 @@ function ManualScreen({ onNavigate, user, onSaved, editRecipe, initialData }) {
   }
 
   useEffect(() => {
-    if (!isEdit || !CONFIGURED) return;
+    if (!isEdit || !CONFIGURED || DEMO_MODE) return;
     (async () => {
       const [{ data: ings }, { data: stps }] = await Promise.all([
         sb.from('ingredients').select('*').eq('recipe_id', editRecipe.id).order('sort_order'),
@@ -1594,7 +1599,7 @@ function ManualScreen({ onNavigate, user, onSaved, editRecipe, initialData }) {
     const q = (activeIngIdx !== null ? ingredients[activeIngIdx]?.item : '') || '';
     const staticHits = getStaticSuggestions(q);
     setSuggestions(staticHits);
-    if (!CONFIGURED || q.length < 2) return;
+    if (!CONFIGURED || DEMO_MODE || q.length < 2) return;
     const timer = setTimeout(async () => {
       const { data } = await sb.from('ingredients').select('item')
         .ilike('item', `%${q.toLowerCase()}%`).limit(20);
@@ -1631,7 +1636,7 @@ function ManualScreen({ onNavigate, user, onSaved, editRecipe, initialData }) {
     if (!title.trim()) { setError('add a title first'); return; }
     setSaving(true); setError('');
     try {
-      if (CONFIGURED && user) {
+      if (CONFIGURED && !DEMO_MODE && user) {
         let imageUrl = coverUrl;
         if (coverFile) {
           const ext = coverFile.name.split('.').pop().toLowerCase();
@@ -1828,7 +1833,7 @@ function SavedScreen({ onNavigate, onOpenRecipe, user, recipes, saved }) {
   return (
     <>
       <div style={{ padding: '8px 20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Wordmark />
+        <Wordmark onClick={() => onNavigate('home')} />
         <Eyebrow>saved</Eyebrow>
       </div>
       <div style={{ padding: '14px 20px 0' }}>
@@ -1864,7 +1869,7 @@ function ProfileScreen({ onNavigate, onOpenRecipe, user, recipes }) {
   return (
     <>
       <div style={{ padding: '8px 20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Wordmark />
+        <Wordmark onClick={() => onNavigate('home')} />
         {CONFIGURED && user
           ? <div onClick={() => sb.auth.signOut()} style={{ font: mono(10, 600), letterSpacing: 1.5, textTransform: 'uppercase', color: P.ink, opacity: 0.5, cursor: 'pointer' }}>sign out</div>
           : <Eyebrow>you</Eyebrow>
@@ -2038,7 +2043,7 @@ function CookingScreen({ recipe, user, isAdmin = false, onNavigate, onDeleted, o
   // Load recipe detail
   useEffect(() => {
     setStepIdx(0); setActiveTab('steps'); setConfirmDel(false); setCookingMode(false);
-    if (!CONFIGURED || !recipe) {
+    if (!CONFIGURED || DEMO_MODE || !recipe) {
       setDetail({ ...SAMPLE_DETAIL, title: r.title || SAMPLE_DETAIL.title, author: r.author || SAMPLE_DETAIL.author, time: r.time || SAMPLE_DETAIL.time, cooks: r.cooks ?? SAMPLE_DETAIL.cooks });
       setServes(r.servings || SAMPLE_DETAIL.servings);
       return;
@@ -2308,7 +2313,7 @@ function DesktopRecipeDetail({ recipe, user, isAdmin = false, onClose, onDeleted
 
   useEffect(() => {
     setConfirmDel(false); setActiveTab('steps');
-    if (!CONFIGURED || !recipe) {
+    if (!CONFIGURED || DEMO_MODE || !recipe) {
       setDetail({ ...SAMPLE_DETAIL, title: recipe?.title || SAMPLE_DETAIL.title, author: recipe?.author || SAMPLE_DETAIL.author });
       setServes(recipe?.servings || SAMPLE_DETAIL.servings);
       return;
@@ -2526,14 +2531,19 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave, init
   const desktopSearchRef                    = useRef(null);
   const username = user?.user_metadata?.username || user?.email?.split('@')[0] || 'you';
 
+  const ROUTABLE = ['home','sheet','search','saved','profile','manual','link','scan'];
+  function pushHash(s) {
+    history.replaceState(null, '', location.pathname + location.search + (s === 'home' ? '' : `#${s}`));
+  }
   function navigate(s) {
-    if (s === 'search') { setScreen('home'); requestAnimationFrame(() => desktopSearchRef.current?.focus()); return; }
+    if (s === 'search') { setScreen('home'); requestAnimationFrame(() => desktopSearchRef.current?.focus()); pushHash('home'); return; }
     if (s !== 'manual') setDraftRecipe(null);
     setScreen(s);
     if (s === 'home') setEditRecipe(null);
+    if (ROUTABLE.includes(s)) pushHash(s);
   }
-  function openEdit(r)    { setEditRecipe(r); setScreen('manual'); }
-  function afterSaved()   { reload(); setScreen('home'); setEditRecipe(null); setDraftRecipe(null); }
+  function openEdit(r)    { setEditRecipe(r); navigate('manual'); }
+  function afterSaved()   { reload(); navigate('home'); }
   function afterDeleted() { setSelectedRecipe(null); reload(); }
 
   const q = query.trim().toLowerCase();
@@ -2548,7 +2558,7 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave, init
   const myRecipes    = recipes.filter(r => r.author_id === user?.id);
 
   const sideNav = [
-    { key: 'home',    icon: 'home',     label: 'feed'    },
+    { key: 'home',    icon: 'home',     label: 'home'    },
     { key: 'saved',   icon: 'bookmark', label: 'saved'   },
     { key: 'search',  icon: 'search',   label: 'search'  },
     { key: 'profile', icon: 'user',     label: 'profile' },
@@ -2568,7 +2578,7 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave, init
 
       {/* Sidebar */}
       <div style={{ width: 240, background: P.bg, borderRight: `2px solid ${P.ink}`, display: 'flex', flexDirection: 'column', padding: '32px 18px 28px', flexShrink: 0 }}>
-        <Wordmark size={22} />
+        <Wordmark size={22} onClick={() => navigate('home')} />
         <nav style={{ marginTop: 32, display: 'flex', flexDirection: 'column', gap: 2 }}>
           {sideNav.map(item => (
             <div key={item.key} onClick={() => navigate(item.key)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 12, background: screen === item.key ? P.ink : 'transparent', color: screen === item.key ? P.bg : P.ink, cursor: 'pointer', userSelect: 'none', font: body(14, screen === item.key ? 700 : 500), transition: 'background 0.1s' }}>
@@ -2641,7 +2651,7 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave, init
             {savedRecipes.length === 0
               ? <div style={{ gridColumn: '1/-1', paddingTop: 40, textAlign: 'center' }}>
                   <div style={{ font: mono(11), opacity: 0.5, letterSpacing: 1.5, textTransform: 'uppercase' }}>nothing saved yet</div>
-                  <div style={{ marginTop: 10, font: body(13), opacity: 0.4 }}>bookmark recipes from the feed</div>
+                  <div style={{ marginTop: 10, font: body(13), opacity: 0.4 }}>bookmark recipes from home</div>
                 </div>
               : savedRecipes.map(r => <RecipeCard key={r.id} r={r} onClick={() => setSelectedRecipe(r)} />)
             }
@@ -2747,7 +2757,7 @@ function OnboardingScreen({ user, onDone, desktop = false }) {
   );
 
   const cards = [
-    { icon: 'home', title: 'browse recipes', sub: 'explore the feed',    bg: P.bg,  color: P.ink, to: null    },
+    { icon: 'home', title: 'browse recipes', sub: 'explore the feed',     bg: P.bg,  color: P.ink, to: null    },
     { icon: 'plus', title: 'add a recipe',   sub: 'type, scan or paste',  bg: P.red, color: P.bg,  to: 'sheet' },
   ];
 
@@ -2829,22 +2839,39 @@ function OnboardingScreen({ user, onDone, desktop = false }) {
   );
 }
 
+function DemoBanner() {
+  return (
+    <div style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 9999, background: P.ink, color: P.bg, padding: '7px 16px', borderRadius: 999, font: mono(10), letterSpacing: 0.6, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 2px 12px rgba(0,0,0,0.35)', userSelect: 'none', pointerEvents: 'none' }}>
+      <span style={{ opacity: 0.5, textTransform: 'uppercase' }}>demo</span>
+      <span style={{ opacity: 0.25 }}>·</span>
+      <span style={{ opacity: 0.7 }}>recipes aren't saved</span>
+      <span style={{ opacity: 0.25 }}>·</span>
+      <span style={{ opacity: 0.5, textTransform: 'uppercase' }}>recirepo.com</span>
+    </div>
+  );
+}
+
 function App() {
   const user                                    = useAuth();
   const { recipes, loading, reload }            = useRecipes(user);
   const { saved, toggleSave }                   = useSaves(user);
   const isAdmin                                 = useIsAdmin(user);
-  const [screen, setScreen]                     = useState('home');
+  const ROUTABLE = ['home','sheet','search','saved','profile','manual','link','scan'];
+  const [screen, setScreen]                     = useState(() => { const h = location.hash.slice(1); return ROUTABLE.includes(h) ? h : 'home'; });
   const [selectedRecipe, setSelectedRecipe]     = useState(null);
   const [editRecipe, setEditRecipe]             = useState(null);
   const [draftRecipe, setDraftRecipe]           = useState(null);
   const [recentlyViewed, setRecentlyViewed]     = useState([]);
-  const [showOnboarding, setShowOnboarding]     = useState(() => CONFIGURED && !localStorage.getItem('rr_onboarded'));
+  const [showOnboarding, setShowOnboarding]     = useState(() => CONFIGURED && !DEMO_MODE && !localStorage.getItem('rr_onboarded'));
   const isDesktop                               = useWindowWidth() >= 900;
 
+  function pushHash(s) {
+    history.replaceState(null, '', location.pathname + location.search + (s === 'home' ? '' : `#${s}`));
+  }
   function navigate(s) {
     if (s !== 'manual') setDraftRecipe(null);
     setScreen(s);
+    if (ROUTABLE.includes(s)) pushHash(s);
   }
   function finishOnboarding(goTo) {
     localStorage.setItem('rr_onboarded', '1');
@@ -2853,11 +2880,11 @@ function App() {
   }
   function openRecipe(r) {
     setRecentlyViewed(prev => [r, ...prev.filter(x => x.id !== r.id)].slice(0, 8));
-    setSelectedRecipe(r); setScreen('cooking');
+    setSelectedRecipe(r); navigate('cooking');
   }
-  function openEdit(r)   { setEditRecipe(r); setScreen('manual'); }
-  function afterSaved()  { reload(); setScreen('home'); }
-  function afterDeleted(){ setSelectedRecipe(null); reload(); setScreen('home'); }
+  function openEdit(r)   { setEditRecipe(r); navigate('manual'); }
+  function afterSaved()  { reload(); navigate('home'); }
+  function afterDeleted(){ setSelectedRecipe(null); reload(); navigate('home'); }
 
   if (user === undefined) {
     return (
@@ -2872,7 +2899,7 @@ function App() {
     );
   }
 
-  if (CONFIGURED && !user) {
+  if (CONFIGURED && !DEMO_MODE && !user) {
     if (isDesktop) {
       const rots = [-1.2, 0.9, 0.7, -0.9];
       return (
@@ -2937,11 +2964,12 @@ function App() {
   }
 
   if (isDesktop) {
-    return <DesktopLayout user={user} recipes={recipes} loading={loading} reload={reload} saved={saved} toggleSave={toggleSave} initialScreen={screen} isAdmin={isAdmin} />;
+    return <>{<DesktopLayout user={user} recipes={recipes} loading={loading} reload={reload} saved={saved} toggleSave={toggleSave} initialScreen={screen} isAdmin={isAdmin} />}{DEMO_MODE && <DemoBanner />}</>;
   }
 
   return (
     <div style={{ width: '100vw', height: '100dvh', background: '#1a1815', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {DEMO_MODE && <DemoBanner />}
       <Phone>
         {(screen === 'home' || screen === 'sheet') && <HomeScreen recipes={recipes} loading={loading} onNavigate={navigate} onOpenRecipe={openRecipe} user={user} saved={saved} toggleSave={toggleSave} active={screen} recentlyViewed={recentlyViewed} />}
         {screen === 'sheet'   && <SheetOverlay onNavigate={navigate} />}
