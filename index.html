@@ -46,22 +46,23 @@ const OCR_SPACE_KEY = 'helloworld';
 
 // ── Design tokens ──────────────────────────────────────────────────────────
 const P = { bg: '#FCEDE2', ink: '#2F2A2A', red: '#D94F4F', yellow: '#F6C26B', paper: '#F7E0CE' };
+const GRID_BG = `repeating-linear-gradient(0deg,${P.ink}09 0 1px,transparent 1px 48px),repeating-linear-gradient(90deg,${P.ink}09 0 1px,transparent 1px 48px)`;
 const mono = (sz, w = 500) => `${w} ${sz}px/1 'IBM Plex Mono', monospace`;
 const disp = (sz, w = 800) => `${w} ${sz}px/0.95 'Bricolage Grotesque', sans-serif`;
 const body = (sz, w = 500) => `${w} ${sz}px/1.35 'Hanken Grotesk', sans-serif`;
 
 // ── Sample data (shown when Supabase is not yet configured) ────────────────
 const SAMPLE_RECIPES = [
-  { id: 'e32496cc-bfc5-478b-be8c-87bea6d209d5', title: 'Fiery tofu from burma superstar', author: 'Izzy',    time: '30m',  servings: 2, tags: [], color: '#E8C36E', accent: '#2F2A2A', cooks: 0,
+  { id: 'e32496cc-bfc5-478b-be8c-87bea6d209d5', title: 'Fiery tofu from burma superstar', author: 'Izzy',    time: '30m',  servings: 2, tags: ['spicy', 'vegetarian'], color: '#E8C36E', accent: '#2F2A2A', cooks: 8,
     image_url: 'https://ftpeschyehyftqsllarq.supabase.co/storage/v1/object/public/recipe-images/202088d0-18fb-41a8-98e6-5cca027eb52b/1779771069752.jpg',
     ingredients: [] },
-  { id: 'e514c4c6-c641-4b27-9a26-c0437865bd4e', title: 'Creamy Corn and Potato Chowder',  author: 'Charlie', time: '40m',  servings: 2, tags: [], color: '#E8C36E', accent: '#2F2A2A', cooks: 0,
+  { id: 'e514c4c6-c641-4b27-9a26-c0437865bd4e', title: 'Creamy Corn and Potato Chowder',  author: 'Charlie', time: '40m',  servings: 2, tags: ['soup', 'vegetarian', 'comfort'], color: '#E8C36E', accent: '#2F2A2A', cooks: 14,
     image_url: 'https://ftpeschyehyftqsllarq.supabase.co/storage/v1/object/public/recipe-images/e57d5596-a775-4ee0-86a9-b74342528bcd/1779689381482.png',
     ingredients: [] },
-  { id: '6b70dc45-82d2-4536-8e6b-3baa7eb52ffc', title: 'Chicken Gumbo',                   author: 'Charlie', time: '90m',  servings: 6, tags: [], color: '#E8C36E', accent: '#2F2A2A', cooks: 0,
+  { id: '6b70dc45-82d2-4536-8e6b-3baa7eb52ffc', title: 'Chicken Gumbo',                   author: 'Charlie', time: '90m',  servings: 6, tags: ['cajun', 'soup'], color: '#E8C36E', accent: '#2F2A2A', cooks: 5,
     image_url: 'https://ftpeschyehyftqsllarq.supabase.co/storage/v1/object/public/recipe-images/e57d5596-a775-4ee0-86a9-b74342528bcd/1779688706314.jpg',
     ingredients: [] },
-  { id: '38642423-99ea-49df-a2fb-8a320786706e', title: 'Tortilla Casserole',               author: 'Charlie', time: '60m',  servings: 2, tags: [], color: '#E8C36E', accent: '#2F2A2A', cooks: 0,
+  { id: '38642423-99ea-49df-a2fb-8a320786706e', title: 'Tortilla Casserole',               author: 'Charlie', time: '60m',  servings: 2, tags: ['mexican', 'bake'], color: '#E8C36E', accent: '#2F2A2A', cooks: 11,
     image_url: 'https://ftpeschyehyftqsllarq.supabase.co/storage/v1/object/public/recipe-images/e57d5596-a775-4ee0-86a9-b74342528bcd/1779644290227.jpg',
     ingredients: [] },
 ];
@@ -709,7 +710,7 @@ function Phone({ children, dark = false }) {
   // Show elevation shadow on tablet+ where the column floats on the dark bg
   const shadow = w > 430 ? '0 30px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.07)' : 'none';
   return (
-    <div style={{ width: '100%', maxWidth: 430, height: '100dvh', background: bg, position: 'relative', overflow: 'hidden', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", color: dark ? P.bg : P.ink, boxShadow: shadow }}>
+    <div style={{ width: '100%', maxWidth: 430, height: '100dvh', background: bg, backgroundImage: dark ? 'none' : GRID_BG, position: 'relative', overflow: 'hidden', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", color: dark ? P.bg : P.ink, boxShadow: shadow }}>
       {/* 44 px top spacer — all inner calc(100% - Xpx) heights reference this offset */}
       <div style={{ height: 44, flexShrink: 0 }} />
       {children}
@@ -786,7 +787,7 @@ function AuthScreen({ compact = false }) {
   const rots = [-0.7, 0.5, 0.6, -0.4];
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', background: P.bg }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', background: P.bg, backgroundImage: GRID_BG }}>
 
       {/* ── Recipe preview grid (mobile only) ────────────────────────────── */}
       {!compact && (
@@ -1272,6 +1273,11 @@ function SearchScreen({ recipes, loading, onNavigate, onOpenRecipe, user }) {
                 );
               })}
               {allTags.length === 0 && <div style={{ font: mono(10), opacity: 0.4, paddingTop: 2 }}>no tags yet</div>}
+              {selectedTags.size > 1 && (
+                <div onClick={() => setSelectedTags(new Set())} style={{ color: P.ink, opacity: 0.4, font: mono(9), cursor: 'pointer', userSelect: 'none', letterSpacing: 1.2, textTransform: 'uppercase', alignSelf: 'center', paddingBottom: 1 }}>
+                  clear all
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -2529,6 +2535,15 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave, init
   const [draftRecipe, setDraftRecipe]       = useState(null);
   const [query, setQuery]                   = useState('');
   const desktopSearchRef                    = useRef(null);
+  const [dsQuery, setDsQuery]               = useState('');
+  const [dsActiveFilter, setDsActiveFilter] = useState(null);
+  const [dsSelectedTags, setDsSelectedTags] = useState(new Set());
+  const [dsTimeLimit, setDsTimeLimit]       = useState(null);
+  const [dsSelectedChef, setDsSelectedChef] = useState(null);
+  const [dsPantryQuery, setDsPantryQuery]   = useState('');
+  const [dsPantryIds, setDsPantryIds]       = useState(null);
+  const dsSearchRef                         = useRef(null);
+  const dsPantryRef                         = useRef(null);
   const username = user?.user_metadata?.username || user?.email?.split('@')[0] || 'you';
 
   const ROUTABLE = ['home','sheet','search','saved','profile','manual','link','scan'];
@@ -2536,7 +2551,6 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave, init
     history.replaceState(null, '', location.pathname + location.search + (s === 'home' ? '' : `#${s}`));
   }
   function navigate(s) {
-    if (s === 'search') { setScreen('home'); requestAnimationFrame(() => desktopSearchRef.current?.focus()); pushHash('home'); return; }
     if (s !== 'manual') setDraftRecipe(null);
     setScreen(s);
     if (s === 'home') setEditRecipe(null);
@@ -2556,6 +2570,51 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave, init
     : recipes;
   const savedRecipes = recipes.filter(r => saved?.has(r.id));
   const myRecipes    = recipes.filter(r => r.author_id === user?.id);
+
+  useEffect(() => {
+    if (screen === 'search') requestAnimationFrame(() => dsSearchRef.current?.focus());
+  }, [screen]);
+  useEffect(() => {
+    if (dsActiveFilter === 'pantry') requestAnimationFrame(() => dsPantryRef.current?.focus());
+  }, [dsActiveFilter]);
+  useEffect(() => {
+    if (!CONFIGURED || DEMO_MODE || dsActiveFilter !== 'pantry' || !dsPantryQuery.trim()) { setDsPantryIds(null); return; }
+    const timer = setTimeout(async () => {
+      const { data } = await sb.from('ingredients').select('recipe_id').ilike('item', `%${dsPantryQuery.trim()}%`);
+      setDsPantryIds(new Set((data || []).map(d => d.recipe_id)));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [dsPantryQuery, dsActiveFilter]);
+
+  function parseMinutesDs(t) {
+    if (!t) return null;
+    const h = Number((t.match(/(\d+)\s*h/) || [0,0])[1]);
+    const m = Number((t.match(/(\d+)\s*min/) || [0,0])[1]);
+    return (h * 60 + m) || null;
+  }
+  function dsResetFilters() { setDsSelectedTags(new Set()); setDsTimeLimit(null); setDsSelectedChef(null); setDsPantryQuery(''); setDsPantryIds(null); }
+  function dsToggleFilter(key) { dsResetFilters(); setDsActiveFilter(prev => prev === key ? null : key); }
+
+  const dsQ = dsQuery.trim().toLowerCase();
+  const dsIsActive = dsQ || (dsActiveFilter === 'tags' && dsSelectedTags.size > 0) || (dsActiveFilter === 'time' && dsTimeLimit) || (dsActiveFilter === 'chef' && dsSelectedChef) || (dsActiveFilter === 'pantry' && dsPantryQuery.trim());
+  let dsFiltered = recipes;
+  if (dsQ) dsFiltered = dsFiltered.filter(r => r.title.toLowerCase().includes(dsQ) || (r.author || '').toLowerCase().includes(dsQ) || (r.tags || []).some(t => t.includes(dsQ)));
+  if (dsActiveFilter === 'tags' && dsSelectedTags.size > 0) dsFiltered = dsFiltered.filter(r => [...dsSelectedTags].every(t => (r.tags || []).includes(t)));
+  if (dsActiveFilter === 'time' && dsTimeLimit) dsFiltered = dsFiltered.filter(r => { const m = parseMinutesDs(r.time); return m && m <= dsTimeLimit; });
+  if (dsActiveFilter === 'chef' && dsSelectedChef) dsFiltered = dsFiltered.filter(r => r.author === dsSelectedChef);
+  if (dsActiveFilter === 'pantry' && dsPantryQuery.trim()) {
+    const pq = dsPantryQuery.trim().toLowerCase();
+    if (CONFIGURED) { dsFiltered = dsPantryIds !== null ? dsFiltered.filter(r => dsPantryIds.has(r.id)) : []; }
+    else { dsFiltered = dsFiltered.filter(r => (r.ingredients || []).some(ing => ing.item.toLowerCase().includes(pq))); }
+  }
+  const dsAllTags = [...new Set(recipes.flatMap(r => r.tags || []))].sort();
+  const dsChefs   = [...new Set(recipes.filter(r => !r.is_link && r.author).map(r => r.author))];
+  const dsFilterOpts = [
+    { key: 'tags',   label: 'tags'   },
+    { key: 'time',   label: 'time'   },
+    { key: 'chef',   label: 'chef'   },
+    { key: 'pantry', label: 'pantry' },
+  ];
 
   const sideNav = [
     { key: 'home',    icon: 'home',     label: 'home'    },
@@ -2577,7 +2636,7 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave, init
     <div style={{ display: 'flex', width: '100vw', height: '100dvh', background: '#1a1815', overflow: 'hidden' }}>
 
       {/* Sidebar */}
-      <div style={{ width: 240, background: P.bg, borderRight: `2px solid ${P.ink}`, display: 'flex', flexDirection: 'column', padding: '32px 18px 28px', flexShrink: 0 }}>
+      <div style={{ width: 240, background: P.bg, backgroundImage: GRID_BG, borderRight: `2px solid ${P.ink}`, display: 'flex', flexDirection: 'column', padding: '32px 18px 28px', flexShrink: 0 }}>
         <Wordmark size={22} onClick={() => navigate('home')} />
         <nav style={{ marginTop: 32, display: 'flex', flexDirection: 'column', gap: 2 }}>
           {sideNav.map(item => (
@@ -2603,7 +2662,7 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave, init
       </div>
 
       {/* Main area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: P.bg }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: P.bg, backgroundImage: GRID_BG }}>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', maxWidth: 720, width: '100%', margin: '0 auto' }}>
 
         {screen === 'home' && <>
@@ -2655,6 +2714,123 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave, init
                 </div>
               : savedRecipes.map(r => <RecipeCard key={r.id} r={r} onClick={() => setSelectedRecipe(r)} />)
             }
+          </div>
+        </>}
+
+        {screen === 'search' && <>
+          {/* Search header */}
+          <div style={{ padding: '28px 32px 16px', flexShrink: 0 }}>
+            <div style={{ font: `800 40px/0.9 'Bricolage Grotesque', sans-serif`, letterSpacing: -1.6, color: P.ink, marginBottom: 16 }}>
+              search<span style={{ color: P.red }}>.</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', border: `2px solid ${P.ink}`, borderRadius: 999, boxShadow: `3px 3px 0 ${P.ink}`, maxWidth: 460 }}>
+              <Icon name="search" size={17} width={2.2} />
+              <input
+                ref={dsSearchRef}
+                value={dsQuery}
+                onChange={e => setDsQuery(e.target.value)}
+                placeholder="search recipes, chefs, tags…"
+                style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', font: body(14), color: P.ink }}
+              />
+              {dsQuery && <div onClick={() => setDsQuery('')} style={{ cursor: 'pointer', opacity: 0.45, lineHeight: 0 }}><Icon name="close" size={14} /></div>}
+            </div>
+            {/* Filter chips */}
+            <div style={{ marginTop: 12, display: 'flex', gap: 7 }}>
+              {dsFilterOpts.map(({ key, label }) => {
+                const on = dsActiveFilter === key;
+                return (
+                  <div key={key} onClick={() => dsToggleFilter(key)}
+                    style={{ padding: '5px 12px', borderRadius: 999, border: `1.6px solid ${on ? P.ink : P.ink + '55'}`, background: on ? P.ink : 'transparent', color: on ? P.bg : P.ink, font: body(12, on ? 700 : 500), cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+                    {label}
+                  </div>
+                );
+              })}
+            </div>
+            {/* Filter sub-panels */}
+            {dsActiveFilter === 'tags' && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {dsAllTags.map(tag => {
+                    const sel = dsSelectedTags.has(tag);
+                    return (
+                      <div key={tag} onClick={() => setDsSelectedTags(prev => { const n = new Set(prev); sel ? n.delete(tag) : n.add(tag); return n; })}
+                        style={{ padding: '5px 10px', borderRadius: 999, border: `1.6px solid ${P.ink}`, background: sel ? P.red : 'transparent', color: sel ? P.bg : P.ink, font: body(12, sel ? 700 : 500), cursor: 'pointer', userSelect: 'none' }}>
+                        {tag}
+                      </div>
+                    );
+                  })}
+                  {dsAllTags.length === 0 && <div style={{ font: mono(10), opacity: 0.4, paddingTop: 2 }}>no tags yet</div>}
+                  {dsSelectedTags.size > 1 && (
+                    <div onClick={() => setDsSelectedTags(new Set())} style={{ color: P.ink, opacity: 0.4, font: mono(9), cursor: 'pointer', userSelect: 'none', letterSpacing: 1.2, textTransform: 'uppercase', alignSelf: 'center', paddingBottom: 1 }}>
+                      clear all
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            {dsActiveFilter === 'time' && (
+              <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+                {[[20,'≤ 20 min'],[30,'≤ 30 min'],[45,'≤ 45 min']].map(([mins, label]) => (
+                  <div key={mins} onClick={() => setDsTimeLimit(dsTimeLimit === mins ? null : mins)}
+                    style={{ padding: '6px 12px', borderRadius: 999, border: `1.6px solid ${P.ink}`, background: dsTimeLimit === mins ? P.ink : 'transparent', color: dsTimeLimit === mins ? P.bg : P.ink, font: body(12, 600), cursor: 'pointer', userSelect: 'none' }}>
+                    {label}
+                  </div>
+                ))}
+              </div>
+            )}
+            {dsActiveFilter === 'chef' && (
+              <div style={{ marginTop: 12 }}>
+                {dsChefs.length === 0
+                  ? <div style={{ font: mono(10), opacity: 0.4 }}>no chefs yet</div>
+                  : <div style={{ display: 'flex', gap: 16, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 4 }}>
+                      {dsChefs.map(chef => (
+                        <div key={chef} onClick={() => setDsSelectedChef(prev => prev === chef ? null : chef)}
+                          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, flexShrink: 0, cursor: 'pointer' }}>
+                          <div style={{ padding: 3, borderRadius: '50%', border: `2.5px solid ${dsSelectedChef === chef ? P.red : 'transparent'}`, transition: 'border-color 0.15s' }}>
+                            <Avatar name={chef} size={46} />
+                          </div>
+                          <span style={{ font: mono(9, dsSelectedChef === chef ? 700 : 500), letterSpacing: 0.5, color: dsSelectedChef === chef ? P.red : P.ink }}>{chef}</span>
+                        </div>
+                      ))}
+                    </div>
+                }
+              </div>
+            )}
+            {dsActiveFilter === 'pantry' && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', border: `2px solid ${P.ink}`, borderRadius: 12, boxShadow: `2px 2px 0 ${P.ink}`, maxWidth: 460 }}>
+                  <Icon name="search" size={16} width={2} />
+                  <input
+                    ref={dsPantryRef}
+                    value={dsPantryQuery}
+                    onChange={e => setDsPantryQuery(e.target.value)}
+                    placeholder="butter, eggs, garlic…"
+                    style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', font: body(14), color: P.ink }}
+                  />
+                  {dsPantryQuery && <div onClick={() => { setDsPantryQuery(''); setDsPantryIds(null); }} style={{ cursor: 'pointer', opacity: 0.45, lineHeight: 0 }}><Icon name="close" size={13} /></div>}
+                </div>
+                {CONFIGURED && dsPantryQuery.trim() && dsPantryIds === null && (
+                  <div style={{ marginTop: 6, font: mono(9), opacity: 0.45, letterSpacing: 0.5 }}>searching…</div>
+                )}
+              </div>
+            )}
+          </div>
+          {/* Results grid */}
+          <div style={{ flex: 1, padding: '4px 32px 32px', overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12, alignContent: 'start' }}>
+            {!dsIsActive ? (
+              <div style={{ gridColumn: '1/-1', paddingTop: 48, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, opacity: 0.35 }}>
+                <Icon name="search" size={40} width={1.5} />
+                <div style={{ font: mono(10), letterSpacing: 1.5, textTransform: 'uppercase', textAlign: 'center', lineHeight: 1.7 }}>
+                  type to search<br />or pick a filter above
+                </div>
+              </div>
+            ) : loading ? (
+              <div style={{ gridColumn: '1/-1', paddingTop: 40, textAlign: 'center', font: mono(11), opacity: 0.5, letterSpacing: 1.5, textTransform: 'uppercase' }}>loading…</div>
+            ) : dsFiltered.length === 0 ? (
+              <div style={{ gridColumn: '1/-1', paddingTop: 40, textAlign: 'center', font: mono(11), opacity: 0.5, letterSpacing: 1.5, textTransform: 'uppercase' }}>no results</div>
+            ) : (
+              dsFiltered.map(r => <RecipeCard key={r.id} r={r} onClick={() => setSelectedRecipe(r)} />)
+            )}
           </div>
         </>}
 
@@ -2731,7 +2907,7 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave, init
 
       {/* Detail panel */}
       {showDetail && (
-        <div style={{ width: 380, background: P.paper, borderLeft: `2px solid ${P.ink}`, display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
+        <div style={{ width: 380, background: P.paper, backgroundImage: GRID_BG, borderLeft: `2px solid ${P.ink}`, display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
           <DesktopRecipeDetail recipe={selectedRecipe} user={user} isAdmin={isAdmin} onClose={() => setSelectedRecipe(null)} onDeleted={afterDeleted} onEdit={openEdit} saved={saved} toggleSave={toggleSave} />
         </div>
       )}
@@ -2764,16 +2940,19 @@ function OnboardingScreen({ user, onDone, desktop = false }) {
   // Mobile: subtract phone's 44px top spacer so content never clips at bottom.
   // Desktop: no phone shell, height is auto inside a fixed-size modal.
   const outerStyle = desktop
-    ? { height: '100%', display: 'flex', flexDirection: 'column', background: P.bg, padding: '36px 36px 28px' }
-    : { height: 'calc(100% - 44px)', display: 'flex', flexDirection: 'column', background: P.bg, padding: '28px 26px 20px' };
+    ? { height: '100%', display: 'flex', flexDirection: 'column', background: P.bg, backgroundImage: GRID_BG, padding: '36px 36px 28px' }
+    : { height: 'calc(100% - 44px)', display: 'flex', flexDirection: 'column', background: P.bg, backgroundImage: GRID_BG, padding: '28px 26px 20px' };
 
   return (
     <div style={outerStyle}>
 
-      {/* ── Wordmark — large, centred ── */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: desktop ? 32 : 24 }}>
-        <Wordmark size={desktop ? 30 : 28} />
+        {/* ── Wordmark — large, centred ── */}
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <Wordmark size={desktop ? 36 : 42} />
       </div>
+
+      {/* Spacer — logo stays top, all content anchors to bottom */}
+      <div style={{ flex: 1 }} />
 
       {step === 0 ? (
         <>
@@ -2796,14 +2975,12 @@ function OnboardingScreen({ user, onDone, desktop = false }) {
             </div>
           </div>
 
-          {/* Push dots + button to bottom */}
-          <div style={{ flex: 1}} />
-
-          {progressDots}
+          {desktop && <div style={{ marginTop: 28 }}>{progressDots}</div>}
           <div onClick={() => setStep(1)}
-            style={{ padding: '16px', background: P.ink, color: P.bg, borderRadius: 16, font: disp(20), letterSpacing: -0.3, textAlign: 'center', cursor: 'pointer', boxShadow: `4px 4px 0 ${P.red}` }}>
+            style={{ marginTop: desktop ? 0 : 28, padding: '16px', background: P.ink, color: P.bg, borderRadius: 16, font: disp(20), letterSpacing: -0.3, textAlign: 'center', cursor: 'pointer', boxShadow: `4px 4px 0 ${P.red}` }}>
             next →
           </div>
+          {!desktop && <div style={{ marginTop: 16 }}>{progressDots}</div>}
         </>
       ) : (
         <>
@@ -2812,8 +2989,11 @@ function OnboardingScreen({ user, onDone, desktop = false }) {
             where do you<br />want to start?
           </div>
 
+          {/* Dots above cards on desktop */}
+          {desktop && <div style={{ marginTop: 20 }}>{progressDots}</div>}
+
           {/* Method cards */}
-          <div style={{ marginTop: 28, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ marginTop: desktop ? 0 : 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
             {cards.map(c => (
               <div key={c.title} onClick={() => onDone(c.to)}
                 style={{ display: 'grid', gridTemplateColumns: '52px 1fr 22px', alignItems: 'center', gap: 12, padding: '16px 14px', background: c.bg, color: c.color, border: `2px solid ${P.ink}`, borderRadius: 14, boxShadow: `4px 4px 0 ${P.ink}`, cursor: 'pointer', userSelect: 'none' }}>
@@ -2829,10 +3009,8 @@ function OnboardingScreen({ user, onDone, desktop = false }) {
             ))}
           </div>
 
-          {/* Dots below cards on step 2 */}
-          <div style={{ marginTop: 24 }}>
-            {progressDots}
-          </div>
+          {/* Dots below cards on mobile */}
+          {!desktop && <div style={{ marginTop: 16 }}>{progressDots}</div>}
         </>
       )}
     </div>
