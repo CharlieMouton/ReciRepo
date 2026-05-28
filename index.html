@@ -31,7 +31,7 @@
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 
 <script type="text/babel">
-const { useState, useEffect, useRef } = React;
+const { useState, useEffect, useRef, useMemo } = React;
 
 // ── Supabase config ────────────────────────────────────────────────────────
 // Replace these two values with your project's URL and anon key.
@@ -53,22 +53,109 @@ const body = (sz, w = 500) => `${w} ${sz}px/1.35 'Hanken Grotesk', sans-serif`;
 
 // ── Sample data (shown when Supabase is not yet configured) ────────────────
 const SAMPLE_RECIPES = [
-  { id: 'e32496cc-bfc5-478b-be8c-87bea6d209d5', title: 'Fiery tofu from burma superstar', author: 'Izzy',    time: '30m',  servings: 2, tags: ['spicy', 'vegetarian'], color: '#E8C36E', accent: '#2F2A2A', cooks: 8,
+  { id: 'e32496cc-bfc5-478b-be8c-87bea6d209d5', title: 'Fiery tofu from burma superstar', author: 'Izzy', time: '30m', servings: 2, tags: ['spicy', 'vegetarian'], color: '#E8C36E', accent: '#2F2A2A', cooks: 8,
     image_url: 'https://ftpeschyehyftqsllarq.supabase.co/storage/v1/object/public/recipe-images/202088d0-18fb-41a8-98e6-5cca027eb52b/1779771069752.jpg',
-    ingredients: [] },
-  { id: 'e514c4c6-c641-4b27-9a26-c0437865bd4e', title: 'Creamy Corn and Potato Chowder',  author: 'Charlie', time: '40m',  servings: 2, tags: ['soup', 'vegetarian', 'comfort'], color: '#E8C36E', accent: '#2F2A2A', cooks: 14,
+    flavor_text: 'Silken tofu in a fiery, deeply savory sauce — a Burma Superstar classic.', source: 'https://www.burmasuperstar.co/fiery-tofu/',
+    ingredients: [
+      { qty: '1 ½ tablespoons', item: 'sambal oelek (indonesian chili paste)' },
+      { qty: '1 tablespoon',    item: 'soy sauce' },
+      { qty: '1 ½ teaspoons',   item: 'dark soy sauce' },
+      { qty: '1 ½ teaspoons',   item: 'oyster sauce' },
+      { qty: '1 teaspoon',      item: 'distilled white vinegar' },
+      { qty: '1 teaspoon',      item: 'sugar' },
+      { qty: '2 tablespoons',   item: 'canola oil' },
+      { qty: '1 cup',           item: 'green beans, ends trimmed' },
+      { qty: '8–10 oz',         item: 'super-firm tofu, sliced into bite-size pieces' },
+      { qty: '1',               item: 'red bell pepper, seeded and sliced into thin strips' },
+      { qty: '1 tablespoon',    item: 'minced garlic' },
+      { qty: '1 tablespoon',    item: 'minced ginger' },
+      { qty: 'handful',         item: 'thai basil leaves' },
+    ],
+    steps: [
+      { text: 'In a wok or large skillet, heat the oil over medium heat. Add the green beans and cook, tilting the wok so the oil coats the beans, until the beans begin to blister, about 1 minute.', timer: 60 },
+      { text: 'Add the tofu and bell pepper and fry until the beans begin to wrinkle, about 2 minutes.', timer: 120 },
+      { text: 'Using a slotted spoon, transfer the tofu and the vegetables to a plate, leaving the oil in the wok.', timer: 0 },
+      { text: 'Add the garlic and ginger to the wok and stir-fry briefly, about 20 seconds.', timer: 20 },
+      { text: 'Return the tofu and vegetables to the wok and pour in the sambal mixture.', timer: 0 },
+      { text: 'Cook for a minute or so until the tofu is nicely coated in the sauce.', timer: 60 },
+      { text: 'Stir in the basil and serve immediately.', timer: 0 },
+    ] },
+  { id: 'e514c4c6-c641-4b27-9a26-c0437865bd4e', title: 'Creamy Corn and Potato Chowder', author: 'Charlie', time: '40m', servings: 2, tags: ['soup', 'vegetarian', 'comfort'], color: '#E8C36E', accent: '#2F2A2A', cooks: 14,
     image_url: 'https://ftpeschyehyftqsllarq.supabase.co/storage/v1/object/public/recipe-images/e57d5596-a775-4ee0-86a9-b74342528bcd/1779689381482.png',
-    ingredients: [] },
-  { id: '6b70dc45-82d2-4536-8e6b-3baa7eb52ffc', title: 'Chicken Gumbo',                   author: 'Charlie', time: '90m',  servings: 6, tags: ['cajun', 'soup'], color: '#E8C36E', accent: '#2F2A2A', cooks: 5,
+    flavor_text: 'Thick sweet corn chowder with tender potato. Comes together faster than it tastes — rich, warming, and always better the next day.', source: 'Green Chef',
+    ingredients: [
+      { qty: '9 oz',     item: 'yellow potatoes' },
+      { qty: '¼ oz',     item: 'garlic' },
+      { qty: '1',        item: 'loaf of bread' },
+      { qty: '4 ¼ oz',   item: 'carrots' },
+      { qty: '2½ tbsp',  item: 'seasoned nutritional yeast' },
+      { qty: '4 ¾ oz',   item: 'corn' },
+      { qty: '2 ¼ oz',   item: 'roasted red peppers' },
+      { qty: '2 tbsp',   item: 'flour' },
+      { qty: '1 tsp',    item: 'paprika & spices' },
+      { qty: '1 tbsp',   item: 'better than bouillon stock concentrate' },
+      { qty: '6 oz',     item: 'coconut cream' },
+    ],
+    steps: [
+      { text: 'Prep: Preheat oven to 425°F for croutons. Small dice yellow potatoes into pieces, about ¼ inch each. Mince garlic. Large dice multigrain mini loaf into pieces, about ¾ inch each.', timer: 0 },
+      { text: 'Heat 2–3 tablespoons cooking oil in a large pot over medium-high heat. Add potatoes and carrots. Season with about ½ teaspoon salt and ¼ teaspoon pepper. Cook about 5 minutes, stirring occasionally.', timer: 300 },
+      { text: 'Reduce heat to medium. Add garlic. Season with about half of the seasoned nutritional yeast. Cook about 2 minutes, or until garlic is fragrant, stirring occasionally.', timer: 120 },
+      { text: 'Add corn, roasted red peppers, and flour. Season with paprika and orange spice blend, about ½ teaspoon salt, and a pinch of pepper. Cook about 1 minute, stirring frequently.', timer: 60 },
+      { text: 'Carefully add 2 cups water and stock concentrate. Stir to combine. Bring to a boil, then reduce heat to medium-low. Cover. Simmer 7–9 minutes, or until potatoes are fork-tender, stirring occasionally.', timer: 480 },
+      { text: 'Separately, place bread in a medium bowl. Drizzle with about 1 tablespoon cooking oil. Season with remaining nutritional yeast, about ¼ teaspoon salt, and a pinch of pepper. Stir to coat.', timer: 0 },
+      { text: 'Spread bread in a single layer on a foil-lined baking sheet. Bake 5–8 minutes, or until croutons are crisp and lightly browned.', timer: 390 },
+      { text: 'Add coconut cream to pot with chowder. Simmer 2–3 minutes, or until warmed through, stirring occasionally. Salt and pepper to taste. Serve with croutons.', timer: 150 },
+    ] },
+  { id: '6b70dc45-82d2-4536-8e6b-3baa7eb52ffc', title: 'Chicken Gumbo', author: 'Charlie', time: '90m', servings: 6, tags: ['cajun', 'soup'], color: '#E8C36E', accent: '#2F2A2A', cooks: 5,
     image_url: 'https://ftpeschyehyftqsllarq.supabase.co/storage/v1/object/public/recipe-images/e57d5596-a775-4ee0-86a9-b74342528bcd/1779688706314.jpg',
-    ingredients: [] },
-  { id: '38642423-99ea-49df-a2fb-8a320786706e', title: 'Tortilla Casserole',               author: 'Charlie', time: '60m',  servings: 2, tags: ['mexican', 'bake'], color: '#E8C36E', accent: '#2F2A2A', cooks: 11,
+    flavor_text: 'So good on rice. If you burn the roux, start over. It will ruin the whole pot.', source: 'Family recipe',
+    ingredients: [
+      { qty: 'large pot', item: 'boiling water' },
+      { qty: '½ cup',     item: 'flour' },
+      { qty: '½ cup',     item: 'oil' },
+      { qty: '1 large',   item: 'onion, chopped' },
+      { qty: '5–7',       item: 'cloves of garlic, diced' },
+      { qty: '3',         item: 'ribs of celery, diced' },
+      { qty: '1',         item: 'bell pepper, chopped' },
+      { qty: '1',         item: 'whole chicken' },
+      { qty: '1 bunch',   item: 'green onions, chopped' },
+      { qty: '2 tsp',     item: "(optional) gumbo filé or powdered caldo de pollo" },
+    ],
+    steps: [
+      { text: 'Start your large pot of water boiling. Cut all of your vegetables and put them aside.', timer: 0 },
+      { text: 'In a large pot (preferably with a heavy bottom), stir the oil and flour together over medium-high heat to make a roux.', timer: 0 },
+      { text: 'Cook while stirring until you have the desired color — a peanut butter color is good, but you may want it darker.', timer: 0 },
+      { text: 'Once your roux is the color you want, add the chopped vegetables and stir until the onions look cooked, about 3–4 minutes.', timer: 210 },
+      { text: 'Add the boiling water a little at a time, stirring constantly.', timer: 0 },
+      { text: 'Once the desired amount of water has been added, put in the raw chicken. Cut it into several pieces, or put it in whole.', timer: 0 },
+      { text: 'Cook for about 30 minutes, then take the chicken out and cool it enough to pull the meat off the bone. Add it back to the gumbo.', timer: 1800 },
+      { text: 'Add the chopped green onions with the chicken pieces and cook for another 5–10 minutes. Serve over rice.', timer: 420 },
+    ] },
+  { id: '38642423-99ea-49df-a2fb-8a320786706e', title: 'Tortilla Casserole', author: 'Charlie', time: '60m', servings: 2, tags: ['mexican', 'bake'], color: '#E8C36E', accent: '#2F2A2A', cooks: 11,
     image_url: 'https://ftpeschyehyftqsllarq.supabase.co/storage/v1/object/public/recipe-images/e57d5596-a775-4ee0-86a9-b74342528bcd/1779644290227.jpg',
-    ingredients: [] },
+    flavor_text: 'Mostly shelf stable ingredients make this easy to break out in a pinch. Rich and cheesy.', source: 'Family recipe',
+    ingredients: [
+      { qty: '36',        item: 'corn tortillas' },
+      { qty: '2 cans',    item: 'cream of mushroom soup' },
+      { qty: '2 cans',    item: 'cream of chicken soup' },
+      { qty: '2 soup cans', item: 'milk (adjust to make sauce thinner if needed)' },
+      { qty: '1 medium',  item: 'onion, chopped' },
+      { qty: '1–3',       item: 'jalapeños, chopped' },
+      { qty: '1 large can', item: 'chopped green chilies (about ½ the size of a soup can)' },
+      { qty: '1–2 bags',  item: 'grated Mexican cheese blend' },
+      { qty: '3–4 cups',  item: 'cooked chicken, cut into bite-size pieces' },
+    ],
+    steps: [
+      { text: 'All amounts are flexible and can be varied for total quantity, taste, and ingredient availability. Preheat oven to 350°F.', timer: 0 },
+      { text: 'In a medium to large pot, combine soups, milk, chopped onion, jalapeño, green chili, and chicken. Warm over medium-low heat until heated through.', timer: 0 },
+      { text: 'In a large casserole dish or 9×13 pan, start with a layer of sauce, then tortillas, then shredded cheese. Repeat — sauce, tortillas, cheese — ending with sauce and cheese on top.', timer: 0 },
+      { text: 'Bake at 350°F until bubbly at the sides, about 30 minutes. Cover with foil if the cheese on top starts to brown too quickly.', timer: 1800 },
+    ] },
 ];
 
 const SAMPLE_DETAIL = {
   title: 'Cacio e Pepe', author: 'maya', time: '20 min', servings: 2, cooks: 14,
+  flavor_text: 'The Roman two-ingredient pasta that proves technique is everything. Get the emulsification right and you get silk. Rush it and you get clumps. Worth learning properly.', source: 'Pasta Grannies',
   ingredients: [
     { qty: '200g', item: 'spaghetti' },
     { qty: '2 tsp', item: 'cracked black pepper' },
@@ -110,6 +197,10 @@ function formatNum(n) {
   }
   if (Math.abs(frac) < 0.04) return String(Math.round(n));
   return String(Math.round(n * 4) / 4).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+}
+
+function isUrl(s) {
+  try { return ['http:', 'https:'].includes(new URL(s).protocol); } catch { return false; }
 }
 
 function scaleQty(qty, factor) {
@@ -440,7 +531,7 @@ function useRecipes(user) {
         data && data.length
           ? data.map(r => {
               const isLink = !!r.source_url && !r.time_text;
-              return { id: r.id, title: r.title, author: r.author_username, author_id: r.author_id, time: r.time_text || '?', servings: r.servings || 2, tags: r.tags || [], color: r.color, accent: r.accent, cooks: Number(r.cook_count) || 0, image_url: r.image_url || null, source_url: r.source_url || null, is_link: isLink };
+              return { id: r.id, title: r.title, author: r.author_username, author_id: r.author_id, time: r.time_text || '?', servings: r.servings || 2, tags: r.tags || [], color: r.color, accent: r.accent, cooks: Number(r.cook_count) || 0, image_url: r.image_url || null, source_url: r.source_url || null, is_link: isLink, source: r.source || '', flavor_text: r.flavor_text || '' };
             })
           : []
       );
@@ -510,6 +601,7 @@ function Icon({ name, size = 20, stroke = 'currentColor', width = 2, style }) {
     case 'flip':     return <svg {...p}><path d="M21 4v6h-6"/><path d="M3 20v-6h6"/><path d="M21 10A9 9 0 005 7M3 14a9 9 0 0016 3"/></svg>;
     case 'external': return <svg {...p}><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><path d="M15 3h6v6"/><path d="M10 14L21 3"/></svg>;
     case 'group':    return <svg {...p}><circle cx="9" cy="8" r="3"/><path d="M3 21c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="8" r="3"/><path d="M21 21c0-3.3-2.7-6-6-6"/></svg>;
+    case 'clock':    return <svg {...p}><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>;
     default: return null;
   }
 }
@@ -689,7 +781,7 @@ function RecipeCard({ r, onClick }) {
       <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minWidth: 0 }}>
         <div>
           <div style={{ font: disp(18), letterSpacing: -0.5, color: P.ink, marginBottom: 4 }}>{r.title}</div>
-          <div style={{ font: mono(10), color: P.ink, opacity: 0.6, letterSpacing: 0.6 }}>by {r.author} · {r.time}</div>
+          <div style={{ font: mono(10), color: P.ink, opacity: 0.6, letterSpacing: 0.6 }}>by {r.author} · <Icon name="clock" size={9} stroke="currentColor" width={2} style={{ display: 'inline-block', verticalAlign: 'middle', marginBottom: 1 }} />{r.time}</div>
         </div>
         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 6 }}>
           {(r.tags || []).map((t, i) => <Sticker key={t} bg={i % 2 ? P.yellow : P.red} color={P.ink} rotate={i % 2 ? 2 : -3} size={9}>{t}</Sticker>)}
@@ -880,7 +972,140 @@ function RecipeMini({ r, onClick }) {
         <RecipeCover url={r.image_url} color={r.color} accent={r.accent} />
       </div>
       <div style={{ marginTop: 5, font: `700 11px/1.25 'Bricolage Grotesque', sans-serif`, color: P.ink, letterSpacing: -0.2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{r.title}</div>
-      <div style={{ font: mono(9), opacity: 0.5, letterSpacing: 0.3, marginTop: 1 }}>{r.time}</div>
+    </div>
+  );
+}
+
+// ── Shared filter utilities ───────────────────────────────────────────────
+function parseMinutes(t) {
+  if (!t) return null;
+  const h = Number((t.match(/(\d+)\s*h/) || [0,0])[1]);
+  const m = Number((t.match(/(\d+)\s*min/) || [0,0])[1]);
+  return (h * 60 + m) || null;
+}
+
+function useRecipeFilter(recipes) {
+  const [activeFilter, setActiveFilter] = useState(null);
+  const [selectedTags, setSelectedTags] = useState(new Set());
+  const [timeLimit, setTimeLimit]       = useState(null);
+  const [selectedChef, setSelectedChef] = useState(null);
+  const [pantryQuery, setPantryQuery]   = useState('');
+  const [pantryIds, setPantryIds]       = useState(null);
+  const pantryRef = useRef(null);
+
+  useEffect(() => {
+    if (activeFilter === 'pantry') requestAnimationFrame(() => pantryRef.current?.focus());
+  }, [activeFilter]);
+
+  useEffect(() => {
+    if (!CONFIGURED || DEMO_MODE || activeFilter !== 'pantry' || !pantryQuery.trim()) { setPantryIds(null); return; }
+    let mounted = true;
+    const timer = setTimeout(async () => {
+      const { data } = await sb.from('ingredients').select('recipe_id').ilike('item', `%${pantryQuery.trim()}%`);
+      if (mounted) setPantryIds(new Set((data || []).map(d => d.recipe_id)));
+    }, 300);
+    return () => { mounted = false; clearTimeout(timer); };
+  }, [pantryQuery, activeFilter]);
+
+  const allTags = useMemo(() => [...new Set(recipes.flatMap(r => r.tags || []))].sort(), [recipes]);
+  const chefs   = useMemo(() => [...new Set(recipes.filter(r => !r.is_link && r.author).map(r => r.author))], [recipes]);
+
+  function resetFilters() { setSelectedTags(new Set()); setTimeLimit(null); setSelectedChef(null); setPantryQuery(''); setPantryIds(null); }
+  function toggleFilter(key) { resetFilters(); setActiveFilter(prev => prev === key ? null : key); }
+
+  function filterRecipes(list, q = '') {
+    let out = q ? list.filter(r => r.title.toLowerCase().includes(q) || (r.author || '').toLowerCase().includes(q) || (r.tags || []).some(t => t.includes(q))) : list;
+    if (activeFilter === 'tags' && selectedTags.size > 0) out = out.filter(r => [...selectedTags].every(t => (r.tags || []).includes(t)));
+    if (activeFilter === 'time' && timeLimit) out = out.filter(r => { const m = parseMinutes(r.time); return m && m <= timeLimit; });
+    if (activeFilter === 'chef' && selectedChef) out = out.filter(r => r.author === selectedChef);
+    if (activeFilter === 'pantry' && pantryQuery.trim()) {
+      const pq = pantryQuery.trim().toLowerCase();
+      if (CONFIGURED) { out = pantryIds !== null ? out.filter(r => pantryIds.has(r.id)) : []; }
+      else { out = out.filter(r => (r.ingredients || []).some(ing => ing.item.toLowerCase().includes(pq))); }
+    }
+    return out;
+  }
+
+  const hasActiveFilter = (activeFilter === 'tags' && selectedTags.size > 0) || (activeFilter === 'time' && !!timeLimit) || (activeFilter === 'chef' && !!selectedChef) || (activeFilter === 'pantry' && !!pantryQuery.trim());
+
+  return { activeFilter, setActiveFilter, selectedTags, setSelectedTags, timeLimit, setTimeLimit, selectedChef, setSelectedChef, pantryQuery, setPantryQuery, pantryIds, pantryRef, allTags, chefs, resetFilters, toggleFilter, filterRecipes, hasActiveFilter };
+}
+
+function FilterPanel({ activeFilter, selectedTags, setSelectedTags, timeLimit, setTimeLimit, selectedChef, setSelectedChef, pantryQuery, setPantryQuery, pantryIds, pantryRef, allTags, chefs, outerStyle = { paddingTop: 10, paddingBottom: 4 } }) {
+  if (activeFilter === 'tags') return (
+    <div style={outerStyle}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {allTags.map(tag => {
+          const sel = selectedTags.has(tag);
+          return (
+            <div key={tag} onClick={() => setSelectedTags(prev => { const n = new Set(prev); sel ? n.delete(tag) : n.add(tag); return n; })}
+              style={{ padding: '5px 10px', borderRadius: 999, border: `1.6px solid ${P.ink}`, background: sel ? P.red : 'transparent', color: sel ? P.bg : P.ink, font: body(12, sel ? 700 : 500), cursor: 'pointer', userSelect: 'none' }}>
+              {tag}
+            </div>
+          );
+        })}
+        {allTags.length === 0 && <div style={{ font: mono(10), opacity: 0.4, paddingTop: 2 }}>no tags yet</div>}
+        {selectedTags.size > 1 && (
+          <div onClick={() => setSelectedTags(new Set())} style={{ color: P.ink, opacity: 0.4, font: mono(9), cursor: 'pointer', userSelect: 'none', letterSpacing: 1.2, textTransform: 'uppercase', alignSelf: 'center', paddingBottom: 1 }}>
+            clear all
+          </div>
+        )}
+      </div>
+    </div>
+  );
+  if (activeFilter === 'time') return (
+    <div style={{ display: 'flex', gap: 8, ...outerStyle }}>
+      {[[20,'≤ 20 min'],[30,'≤ 30 min'],[45,'≤ 45 min']].map(([mins, label]) => (
+        <div key={mins} onClick={() => setTimeLimit(timeLimit === mins ? null : mins)}
+          style={{ padding: '6px 12px', borderRadius: 999, border: `1.6px solid ${P.ink}`, background: timeLimit === mins ? P.ink : 'transparent', color: timeLimit === mins ? P.bg : P.ink, font: body(12, 600), cursor: 'pointer', userSelect: 'none' }}>
+          {label}
+        </div>
+      ))}
+    </div>
+  );
+  if (activeFilter === 'chef') return (
+    <div style={outerStyle}>
+      {chefs.length === 0
+        ? <div style={{ font: mono(10), opacity: 0.4, paddingTop: 2 }}>no chefs yet</div>
+        : <div style={{ display: 'flex', gap: 16, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 4 }}>
+            {chefs.map(chef => (
+              <div key={chef} onClick={() => setSelectedChef(prev => prev === chef ? null : chef)}
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, flexShrink: 0, cursor: 'pointer' }}>
+                <div style={{ padding: 3, borderRadius: '50%', border: `2.5px solid ${selectedChef === chef ? P.red : 'transparent'}`, transition: 'border-color 0.15s' }}>
+                  <Avatar name={chef} size={46} />
+                </div>
+                <span style={{ font: mono(9, selectedChef === chef ? 700 : 500), letterSpacing: 0.5, color: selectedChef === chef ? P.red : P.ink }}>{chef}</span>
+              </div>
+            ))}
+          </div>
+      }
+    </div>
+  );
+  if (activeFilter === 'pantry') return (
+    <div style={outerStyle}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', background: P.bg, border: `2px solid ${P.ink}`, borderRadius: 12, boxShadow: `2px 2px 0 ${P.ink}` }}>
+        <Icon name="search" size={16} width={2} />
+        <input
+          ref={pantryRef}
+          value={pantryQuery}
+          onChange={e => setPantryQuery(e.target.value)}
+          placeholder="butter, eggs, garlic…"
+          style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', font: body(14), color: P.ink }}
+        />
+        {pantryQuery && <div onClick={() => setPantryQuery('')} style={{ cursor: 'pointer', opacity: 0.45, lineHeight: 0 }}><Icon name="close" size={13} /></div>}
+      </div>
+      {CONFIGURED && pantryQuery.trim() && pantryIds === null && (
+        <div style={{ marginTop: 6, font: mono(9), opacity: 0.45, letterSpacing: 0.5 }}>searching…</div>
+      )}
+    </div>
+  );
+  return null;
+}
+
+function DeleteButton({ onDelete, deleting, confirmDel }) {
+  return (
+    <div onClick={!deleting ? onDelete : undefined} style={{ font: mono(10), color: confirmDel ? P.bg : P.ink, opacity: confirmDel ? 1 : 0.4, cursor: 'pointer', letterSpacing: 0.5, padding: '6px 12px', borderRadius: 999, background: confirmDel ? P.red : 'transparent', border: `1.5px solid ${confirmDel ? P.red : 'transparent'}`, transition: 'background 0.15s, border-color 0.15s, color 0.15s' }}>
+      {deleting ? 'deleting…' : confirmDel ? 'tap again to confirm' : 'delete recipe'}
     </div>
   );
 }
@@ -889,66 +1114,14 @@ function RecipeMini({ r, onClick }) {
 // │  Home screen                                                            │
 // ╰─────────────────────────────────────────────────────────────────────────╯
 function HomeScreen({ recipes, loading, onNavigate, onOpenRecipe, user, saved, toggleSave, active = 'home', recentlyViewed = [] }) {
-  const [query, setQuery]               = useState('');
-  const [activeFilter, setActiveFilter] = useState(null);
-  const [selectedTags, setSelectedTags] = useState(new Set());
-  const [timeLimit, setTimeLimit]       = useState(null);
-  const [selectedChef, setSelectedChef] = useState(null);
-  const [pantryQuery, setPantryQuery]   = useState('');
-  const [pantryIds, setPantryIds]       = useState(null); // Set<id> from Supabase query, null = no query yet
-  const searchRef                       = useRef(null);
-  const pantryRef                       = useRef(null);
+  const [query, setQuery] = useState('');
+  const searchRef         = useRef(null);
   const username = user?.user_metadata?.username || user?.email?.split('@')[0] || 'you';
+  const { activeFilter, setActiveFilter, selectedTags, setSelectedTags, timeLimit, setTimeLimit, selectedChef, setSelectedChef, pantryQuery, setPantryQuery, pantryIds, pantryRef, allTags, chefs, resetFilters, toggleFilter, filterRecipes, hasActiveFilter } = useRecipeFilter(recipes);
 
-  // Auto-focus pantry input when that filter opens
-  useEffect(() => {
-    if (activeFilter === 'pantry') requestAnimationFrame(() => pantryRef.current?.focus());
-  }, [activeFilter]);
-
-  // Debounced Supabase ingredient search for pantry filter
-  useEffect(() => {
-    if (!CONFIGURED || DEMO_MODE || activeFilter !== 'pantry' || !pantryQuery.trim()) { setPantryIds(null); return; }
-    const timer = setTimeout(async () => {
-      const { data } = await sb.from('ingredients').select('recipe_id').ilike('item', `%${pantryQuery.trim()}%`);
-      setPantryIds(new Set((data || []).map(d => d.recipe_id)));
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [pantryQuery, activeFilter]);
-
-  const q = query.trim().toLowerCase();
-
-  function parseMinutes(t) {
-    if (!t) return null;
-    const h = Number((t.match(/(\d+)\s*h/) || [0,0])[1]);
-    const m = Number((t.match(/(\d+)\s*min/) || [0,0])[1]);
-    return (h * 60 + m) || null;
-  }
-
-  let filtered = q
-    ? recipes.filter(r =>
-        r.title.toLowerCase().includes(q) ||
-        (r.author || '').toLowerCase().includes(q) ||
-        (r.tags || []).some(t => t.includes(q))
-      )
-    : recipes;
-  if (activeFilter === 'tags' && selectedTags.size > 0)
-    filtered = filtered.filter(r => [...selectedTags].every(t => (r.tags || []).includes(t)));
-  if (activeFilter === 'time' && timeLimit)
-    filtered = filtered.filter(r => { const m = parseMinutes(r.time); return m && m <= timeLimit; });
-  if (activeFilter === 'chef' && selectedChef)
-    filtered = filtered.filter(r => r.author === selectedChef);
-  if (activeFilter === 'pantry' && pantryQuery.trim()) {
-    const pq = pantryQuery.trim().toLowerCase();
-    if (CONFIGURED) { filtered = pantryIds !== null ? filtered.filter(r => pantryIds.has(r.id)) : []; }
-    else { filtered = filtered.filter(r => (r.ingredients || []).some(ing => ing.item.toLowerCase().includes(pq))); }
-  }
-
-  const allTags = [...new Set(recipes.flatMap(r => r.tags || []))].sort();
-  const chefs   = [...new Set(recipes.filter(r => !r.is_link && r.author).map(r => r.author))];
-  const isFiltering = q || (activeFilter === 'tags' && selectedTags.size > 0) || (activeFilter === 'time' && timeLimit) || (activeFilter === 'chef' && selectedChef) || (activeFilter === 'pantry' && pantryQuery.trim());
-
-  function resetFilters() { setSelectedTags(new Set()); setTimeLimit(null); setSelectedChef(null); setPantryQuery(''); setPantryIds(null); }
-  function toggleFilter(key) { resetFilters(); setActiveFilter(prev => prev === key ? null : key); }
+  const q           = query.trim().toLowerCase();
+  const filtered    = filterRecipes(recipes, q);
+  const isFiltering = q || hasActiveFilter;
 
   const filterOpts = [
     { key: null,     label: 'all'    },
@@ -1013,75 +1186,15 @@ function HomeScreen({ recipes, loading, onNavigate, onOpenRecipe, user, saved, t
       {/* Scrollable body */}
       <div style={{ padding: '0 20px 110px', overflowY: 'auto', height: 'calc(100% - 210px)' }}>
 
-        {/* Tag filter picker */}
-        {activeFilter === 'tags' && (
-          <div style={{ paddingTop: 10, paddingBottom: 4 }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {allTags.map(tag => {
-                const sel = selectedTags.has(tag);
-                return (
-                  <div key={tag} onClick={() => setSelectedTags(prev => { const n = new Set(prev); sel ? n.delete(tag) : n.add(tag); return n; })}
-                    style={{ padding: '5px 10px', borderRadius: 999, border: `1.6px solid ${P.ink}`, background: sel ? P.red : 'transparent', color: sel ? P.bg : P.ink, font: body(12, sel ? 700 : 500), cursor: 'pointer', userSelect: 'none' }}>
-                    {tag}
-                  </div>
-                );
-              })}
-              {allTags.length === 0 && <div style={{ font: mono(10), opacity: 0.4, paddingTop: 2 }}>no tags yet</div>}
-            </div>
-          </div>
-        )}
-
-        {/* Time filter picker */}
-        {activeFilter === 'time' && (
-          <div style={{ paddingTop: 10, paddingBottom: 4, display: 'flex', gap: 8 }}>
-            {[[20,'≤ 20 min'],[30,'≤ 30 min'],[45,'≤ 45 min']].map(([mins, label]) => (
-              <div key={mins} onClick={() => setTimeLimit(timeLimit === mins ? null : mins)}
-                style={{ padding: '6px 12px', borderRadius: 999, border: `1.6px solid ${P.ink}`, background: timeLimit === mins ? P.ink : 'transparent', color: timeLimit === mins ? P.bg : P.ink, font: body(12, 600), cursor: 'pointer', userSelect: 'none' }}>
-                {label}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Chef filter picker */}
-        {activeFilter === 'chef' && (
-          <div style={{ paddingTop: 10, paddingBottom: 4 }}>
-            {chefs.length === 0
-              ? <div style={{ font: mono(10), opacity: 0.4, paddingTop: 2 }}>no chefs yet</div>
-              : <div style={{ display: 'flex', gap: 16, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 4 }}>
-                  {chefs.map(chef => (
-                    <div key={chef} onClick={() => setSelectedChef(prev => prev === chef ? null : chef)}
-                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, flexShrink: 0, cursor: 'pointer' }}>
-                      <div style={{ padding: 3, borderRadius: '50%', border: `2.5px solid ${selectedChef === chef ? P.red : 'transparent'}`, transition: 'border-color 0.15s' }}>
-                        <Avatar name={chef} size={46} />
-                      </div>
-                      <span style={{ font: mono(9, selectedChef === chef ? 700 : 500), letterSpacing: 0.5, color: selectedChef === chef ? P.red : P.ink }}>{chef}</span>
-                    </div>
-                  ))}
-                </div>
-            }
-          </div>
-        )}
-
-        {/* Pantry filter — ingredient search */}
-        {activeFilter === 'pantry' && (
-          <div style={{ paddingTop: 10, paddingBottom: 4 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', background: P.bg, border: `2px solid ${P.ink}`, borderRadius: 12, boxShadow: `2px 2px 0 ${P.ink}` }}>
-              <Icon name="search" size={16} width={2} />
-              <input
-                ref={pantryRef}
-                value={pantryQuery}
-                onChange={e => setPantryQuery(e.target.value)}
-                placeholder="butter, eggs, garlic…"
-                style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', font: body(14), color: P.ink }}
-              />
-              {pantryQuery && <div onClick={() => { setPantryQuery(''); setPantryIds(null); }} style={{ cursor: 'pointer', opacity: 0.45, lineHeight: 0 }}><Icon name="close" size={13} /></div>}
-            </div>
-            {CONFIGURED && pantryQuery.trim() && pantryIds === null && (
-              <div style={{ marginTop: 6, font: mono(9), opacity: 0.45, letterSpacing: 0.5 }}>searching…</div>
-            )}
-          </div>
-        )}
+        <FilterPanel
+          activeFilter={activeFilter}
+          selectedTags={selectedTags} setSelectedTags={setSelectedTags}
+          timeLimit={timeLimit} setTimeLimit={setTimeLimit}
+          selectedChef={selectedChef} setSelectedChef={setSelectedChef}
+          pantryQuery={pantryQuery} setPantryQuery={setPantryQuery}
+          pantryIds={pantryIds} pantryRef={pantryRef}
+          allTags={allTags} chefs={chefs}
+        />
 
         {/* Recently viewed strip */}
         {!isFiltering && recentlyViewed.length > 0 && (
@@ -1167,56 +1280,15 @@ function SheetOverlay({ onNavigate }) {
 // │  Search screen  (empty until query / filter applied)                    │
 // ╰─────────────────────────────────────────────────────────────────────────╯
 function SearchScreen({ recipes, loading, onNavigate, onOpenRecipe, user }) {
-  const [query, setQuery]               = useState('');
-  const [activeFilter, setActiveFilter] = useState(null);
-  const [selectedTags, setSelectedTags] = useState(new Set());
-  const [timeLimit, setTimeLimit]       = useState(null);
-  const [selectedChef, setSelectedChef] = useState(null);
-  const [pantryQuery, setPantryQuery]   = useState('');
-  const [pantryIds, setPantryIds]       = useState(null);
-  const searchRef = useRef(null);
-  const pantryRef = useRef(null);
+  const [query, setQuery] = useState('');
+  const searchRef         = useRef(null);
+  const { activeFilter, setActiveFilter, selectedTags, setSelectedTags, timeLimit, setTimeLimit, selectedChef, setSelectedChef, pantryQuery, setPantryQuery, pantryIds, pantryRef, allTags, chefs, toggleFilter, filterRecipes, hasActiveFilter } = useRecipeFilter(recipes);
 
   useEffect(() => { requestAnimationFrame(() => searchRef.current?.focus()); }, []);
-  useEffect(() => {
-    if (activeFilter === 'pantry') requestAnimationFrame(() => pantryRef.current?.focus());
-  }, [activeFilter]);
 
-  useEffect(() => {
-    if (!CONFIGURED || DEMO_MODE || activeFilter !== 'pantry' || !pantryQuery.trim()) { setPantryIds(null); return; }
-    const timer = setTimeout(async () => {
-      const { data } = await sb.from('ingredients').select('recipe_id').ilike('item', `%${pantryQuery.trim()}%`);
-      setPantryIds(new Set((data || []).map(d => d.recipe_id)));
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [pantryQuery, activeFilter]);
-
-  function resetFilters() { setSelectedTags(new Set()); setTimeLimit(null); setSelectedChef(null); setPantryQuery(''); setPantryIds(null); }
-  function toggleFilter(key) { resetFilters(); setActiveFilter(prev => prev === key ? null : key); }
-
-  function parseMinutes(t) {
-    if (!t) return null;
-    const h = Number((t.match(/(\d+)\s*h/) || [0,0])[1]);
-    const m = Number((t.match(/(\d+)\s*min/) || [0,0])[1]);
-    return (h * 60 + m) || null;
-  }
-
-  const q = query.trim().toLowerCase();
-  const isActive = q || (activeFilter === 'tags' && selectedTags.size > 0) || (activeFilter === 'time' && timeLimit) || (activeFilter === 'chef' && selectedChef) || (activeFilter === 'pantry' && pantryQuery.trim());
-
-  let filtered = recipes;
-  if (q) filtered = filtered.filter(r => r.title.toLowerCase().includes(q) || (r.author || '').toLowerCase().includes(q) || (r.tags || []).some(t => t.includes(q)));
-  if (activeFilter === 'tags' && selectedTags.size > 0) filtered = filtered.filter(r => [...selectedTags].every(t => (r.tags || []).includes(t)));
-  if (activeFilter === 'time' && timeLimit) filtered = filtered.filter(r => { const m = parseMinutes(r.time); return m && m <= timeLimit; });
-  if (activeFilter === 'chef' && selectedChef) filtered = filtered.filter(r => r.author === selectedChef);
-  if (activeFilter === 'pantry' && pantryQuery.trim()) {
-    const pq = pantryQuery.trim().toLowerCase();
-    if (CONFIGURED) { filtered = pantryIds !== null ? filtered.filter(r => pantryIds.has(r.id)) : []; }
-    else { filtered = filtered.filter(r => (r.ingredients || []).some(ing => ing.item.toLowerCase().includes(pq))); }
-  }
-
-  const allTags = [...new Set(recipes.flatMap(r => r.tags || []))].sort();
-  const chefs   = [...new Set(recipes.filter(r => !r.is_link && r.author).map(r => r.author))];
+  const q        = query.trim().toLowerCase();
+  const filtered = filterRecipes(recipes, q);
+  const isActive = q || hasActiveFilter;
 
   const filterOpts = [
     { key: 'tags',   label: 'tags'   },
@@ -1259,77 +1331,15 @@ function SearchScreen({ recipes, loading, onNavigate, onOpenRecipe, user }) {
       {/* Scrollable body */}
       <div style={{ padding: '0 20px 110px', overflowY: 'auto', height: 'calc(100% - 155px)' }}>
 
-        {/* Sub-panels */}
-        {activeFilter === 'tags' && (
-          <div style={{ paddingTop: 10, paddingBottom: 4 }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {allTags.map(tag => {
-                const sel = selectedTags.has(tag);
-                return (
-                  <div key={tag} onClick={() => setSelectedTags(prev => { const n = new Set(prev); sel ? n.delete(tag) : n.add(tag); return n; })}
-                    style={{ padding: '5px 10px', borderRadius: 999, border: `1.6px solid ${P.ink}`, background: sel ? P.red : 'transparent', color: sel ? P.bg : P.ink, font: body(12, sel ? 700 : 500), cursor: 'pointer', userSelect: 'none' }}>
-                    {tag}
-                  </div>
-                );
-              })}
-              {allTags.length === 0 && <div style={{ font: mono(10), opacity: 0.4, paddingTop: 2 }}>no tags yet</div>}
-              {selectedTags.size > 1 && (
-                <div onClick={() => setSelectedTags(new Set())} style={{ color: P.ink, opacity: 0.4, font: mono(9), cursor: 'pointer', userSelect: 'none', letterSpacing: 1.2, textTransform: 'uppercase', alignSelf: 'center', paddingBottom: 1 }}>
-                  clear all
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {activeFilter === 'time' && (
-          <div style={{ paddingTop: 10, paddingBottom: 4, display: 'flex', gap: 8 }}>
-            {[[20,'≤ 20 min'],[30,'≤ 30 min'],[45,'≤ 45 min']].map(([mins, label]) => (
-              <div key={mins} onClick={() => setTimeLimit(timeLimit === mins ? null : mins)}
-                style={{ padding: '6px 12px', borderRadius: 999, border: `1.6px solid ${P.ink}`, background: timeLimit === mins ? P.ink : 'transparent', color: timeLimit === mins ? P.bg : P.ink, font: body(12, 600), cursor: 'pointer', userSelect: 'none' }}>
-                {label}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {activeFilter === 'chef' && (
-          <div style={{ paddingTop: 10, paddingBottom: 4 }}>
-            {chefs.length === 0
-              ? <div style={{ font: mono(10), opacity: 0.4, paddingTop: 2 }}>no chefs yet</div>
-              : <div style={{ display: 'flex', gap: 16, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 4 }}>
-                  {chefs.map(chef => (
-                    <div key={chef} onClick={() => setSelectedChef(prev => prev === chef ? null : chef)}
-                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, flexShrink: 0, cursor: 'pointer' }}>
-                      <div style={{ padding: 3, borderRadius: '50%', border: `2.5px solid ${selectedChef === chef ? P.red : 'transparent'}`, transition: 'border-color 0.15s' }}>
-                        <Avatar name={chef} size={46} />
-                      </div>
-                      <span style={{ font: mono(9, selectedChef === chef ? 700 : 500), letterSpacing: 0.5, color: selectedChef === chef ? P.red : P.ink }}>{chef}</span>
-                    </div>
-                  ))}
-                </div>
-            }
-          </div>
-        )}
-
-        {activeFilter === 'pantry' && (
-          <div style={{ paddingTop: 10, paddingBottom: 4 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', background: P.bg, border: `2px solid ${P.ink}`, borderRadius: 12, boxShadow: `2px 2px 0 ${P.ink}` }}>
-              <Icon name="search" size={16} width={2} />
-              <input
-                ref={pantryRef}
-                value={pantryQuery}
-                onChange={e => setPantryQuery(e.target.value)}
-                placeholder="butter, eggs, garlic…"
-                style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', font: body(14), color: P.ink }}
-              />
-              {pantryQuery && <div onClick={() => { setPantryQuery(''); setPantryIds(null); }} style={{ cursor: 'pointer', opacity: 0.45, lineHeight: 0 }}><Icon name="close" size={13} /></div>}
-            </div>
-            {CONFIGURED && pantryQuery.trim() && pantryIds === null && (
-              <div style={{ marginTop: 6, font: mono(9), opacity: 0.45, letterSpacing: 0.5 }}>searching…</div>
-            )}
-          </div>
-        )}
+        <FilterPanel
+          activeFilter={activeFilter}
+          selectedTags={selectedTags} setSelectedTags={setSelectedTags}
+          timeLimit={timeLimit} setTimeLimit={setTimeLimit}
+          selectedChef={selectedChef} setSelectedChef={setSelectedChef}
+          pantryQuery={pantryQuery} setPantryQuery={setPantryQuery}
+          pantryIds={pantryIds} pantryRef={pantryRef}
+          allTags={allTags} chefs={chefs}
+        />
 
         {/* Results or empty state */}
         <div style={{ paddingTop: 16 }}>
@@ -1555,6 +1565,8 @@ function ManualScreen({ onNavigate, user, onSaved, editRecipe, initialData }) {
   const [saving, setSaving]         = useState(false);
   const [error, setError]           = useState('');
   const [sourceUrl, setSourceUrl]   = useState('');
+  const [source, setSource]         = useState('');
+  const [flavorText, setFlavorText] = useState('');
   const [activeIngIdx, setActiveIngIdx] = useState(null);
   const [suggestions, setSuggestions]   = useState([]);
   const [showPaste, setShowPaste]       = useState(false);
@@ -1586,6 +1598,8 @@ function ManualScreen({ onNavigate, user, onSaved, editRecipe, initialData }) {
       setSteps(stps?.length ? stps.map(s => s.text) : ['']);
       setCoverUrl(editRecipe.image_url || '');
       setCoverPreview(editRecipe.image_url || '');
+      setSource(editRecipe.source || '');
+      setFlavorText(editRecipe.flavor_text || '');
     })();
   }, [editRecipe?.id]);
 
@@ -1598,6 +1612,8 @@ function ManualScreen({ onNavigate, user, onSaved, editRecipe, initialData }) {
     setIngred(initialData.ingredients?.length ? initialData.ingredients : [{ qty: '', item: '' }]);
     setSteps(initialData.steps?.length ? initialData.steps : ['']);
     setSourceUrl(initialData.source_url || '');
+    setSource(initialData.source || initialData.source_url || '');
+    setFlavorText(initialData.flavor_text || '');
   }, [initialData]);
 
   // Debounced ingredient autocomplete
@@ -1654,7 +1670,7 @@ function ManualScreen({ onNavigate, user, onSaved, editRecipe, initialData }) {
         }
         let recipeId;
         if (isEdit) {
-          const { error: e1 } = await sb.from('recipes').update({ title: title.trim(), time_text: normalizeTimeText(timeText), servings: parseInt(servings) || 2, ...(imageUrl !== undefined ? { image_url: imageUrl || null } : {}) }).eq('id', editRecipe.id);
+          const { error: e1 } = await sb.from('recipes').update({ title: title.trim(), time_text: normalizeTimeText(timeText), servings: parseInt(servings) || 2, source: source.trim() || null, flavor_text: flavorText.trim() || null, ...(imageUrl !== undefined ? { image_url: imageUrl || null } : {}) }).eq('id', editRecipe.id);
           if (e1) throw e1;
           recipeId = editRecipe.id;
           await Promise.all([
@@ -1663,7 +1679,7 @@ function ManualScreen({ onNavigate, user, onSaved, editRecipe, initialData }) {
             sb.from('steps').delete().eq('recipe_id', recipeId),
           ]);
         } else {
-          const { data: recipe, error: e1 } = await sb.from('recipes').insert({ title: title.trim(), author_id: user.id, time_text: normalizeTimeText(timeText), servings: parseInt(servings) || 2, color: '#E8C36E', accent: '#2F2A2A', ...(sourceUrl ? { source_url: sourceUrl } : {}), ...(imageUrl ? { image_url: imageUrl } : {}) }).select().single();
+          const { data: recipe, error: e1 } = await sb.from('recipes').insert({ title: title.trim(), author_id: user.id, time_text: normalizeTimeText(timeText), servings: parseInt(servings) || 2, color: '#E8C36E', accent: '#2F2A2A', ...(sourceUrl ? { source_url: sourceUrl } : {}), ...(source.trim() ? { source: source.trim() } : {}), ...(flavorText.trim() ? { flavor_text: flavorText.trim() } : {}), ...(imageUrl ? { image_url: imageUrl } : {}) }).select().single();
           if (e1) throw e1;
           recipeId = recipe.id;
         }
@@ -1747,6 +1763,15 @@ function ManualScreen({ onNavigate, user, onSaved, editRecipe, initialData }) {
           <input value={title} onChange={e => setTitle(e.target.value)} placeholder="name your recipe…" style={{ ...fieldBase, font: `800 26px/0.95 'Bricolage Grotesque', sans-serif`, letterSpacing: -0.8, marginTop: 6, display: 'block' }} />
         </div>
 
+        {/* Flavor text */}
+        <div style={{ marginTop: 14, border: `1.8px solid ${P.ink}`, borderRadius: 10, padding: '6px 10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ font: mono(9), opacity: 0.6, textTransform: 'uppercase', letterSpacing: 1 }}>overview</div>
+            <div style={{ font: mono(9), opacity: flavorText.length > 190 ? 1 : 0.4, color: flavorText.length >= 200 ? P.red : P.ink }}>{flavorText.length}/200</div>
+          </div>
+          <textarea value={flavorText} onChange={e => setFlavorText(e.target.value.slice(0, 200))} placeholder="a short description of this dish…" rows={3} style={{ ...fieldBase, font: body(13), lineHeight: 1.5, marginTop: 4, resize: 'none', width: '100%', display: 'block' }} />
+        </div>
+
         {/* Meta */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 14 }}>
           {[['time','e.g. 20 min', timeText, setTimeText],['serves','2', servings, setServings]].map(([k, ph, val, set]) => (
@@ -1768,6 +1793,12 @@ function ManualScreen({ onNavigate, user, onSaved, editRecipe, initialData }) {
             ))}
             <input value={tagDraft} onChange={e => setTagDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(tagDraft); } }} onBlur={() => tagDraft && addTag(tagDraft)} placeholder="add tag…" style={{ border: 'none', outline: 'none', background: 'transparent', font: body(12, 600), color: P.ink, borderBottom: `1.5px solid ${P.ink}44`, paddingBottom: 2, width: 72 }} />
           </div>
+        </div>
+
+        {/* Source */}
+        <div style={{ marginTop: 14, borderBottom: `1.5px solid ${P.ink}22`, paddingBottom: 10 }}>
+          <Eyebrow>source</Eyebrow>
+          <input value={source} onChange={e => setSource(e.target.value)} placeholder="link or description (e.g. family recipe from my Nana)" style={{ ...fieldBase, font: body(13), marginTop: 4, display: 'block', width: '100%', opacity: 0.8 }} />
         </div>
 
         {/* Ingredients */}
@@ -2050,7 +2081,17 @@ function CookingScreen({ recipe, user, isAdmin = false, onNavigate, onDeleted, o
   useEffect(() => {
     setStepIdx(0); setActiveTab('steps'); setConfirmDel(false); setCookingMode(false);
     if (!CONFIGURED || DEMO_MODE || !recipe) {
-      setDetail({ ...SAMPLE_DETAIL, title: r.title || SAMPLE_DETAIL.title, author: r.author || SAMPLE_DETAIL.author, time: r.time || SAMPLE_DETAIL.time, cooks: r.cooks ?? SAMPLE_DETAIL.cooks });
+      setDetail({
+        ...SAMPLE_DETAIL,
+        title:       r.title       || SAMPLE_DETAIL.title,
+        author:      r.author      || SAMPLE_DETAIL.author,
+        time:        r.time        || SAMPLE_DETAIL.time,
+        cooks:       r.cooks       ?? SAMPLE_DETAIL.cooks,
+        flavor_text: r.flavor_text || SAMPLE_DETAIL.flavor_text || '',
+        source:      r.source      || SAMPLE_DETAIL.source      || '',
+        ingredients: r.ingredients?.length ? r.ingredients : SAMPLE_DETAIL.ingredients,
+        steps:       r.steps?.length       ? r.steps       : SAMPLE_DETAIL.steps,
+      });
       setServes(r.servings || SAMPLE_DETAIL.servings);
       return;
     }
@@ -2063,6 +2104,8 @@ function CookingScreen({ recipe, user, isAdmin = false, onNavigate, onDeleted, o
       setDetail({
         title: recipe.title, author: recipe.author, time: recipe.time, cooks: recipe.cooks,
         servings: recipe.servings || 2,
+        flavor_text: recipe.flavor_text || '',
+        source: recipe.source || '',
         ingredients: ings || [],
         steps: (stps || []).map(s => ({ text: s.text, timer: s.timer_seconds || 0 })),
       });
@@ -2133,7 +2176,7 @@ function CookingScreen({ recipe, user, isAdmin = false, onNavigate, onDeleted, o
           <Icon name="back" size={16} />
         </div>
         {/* Screen-awake toggle */}
-        <div onClick={toggleWake} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 999, border: `1.5px solid ${wakeActive ? P.red : P.ink + '44'}`, cursor: 'pointer', userSelect: 'none', transition: 'all 0.15s' }}>
+        <div onClick={toggleWake} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 999, border: `1.5px solid ${wakeActive ? P.red : P.ink + '44'}`, cursor: 'pointer', userSelect: 'none', transition: 'border-color 0.15s' }}>
           <div style={{ width: 7, height: 7, borderRadius: '50%', background: wakeActive ? P.red : `${P.ink}44`, transition: 'background 0.15s' }} />
           <span style={{ font: mono(9), color: wakeActive ? P.red : P.ink, opacity: wakeActive ? 1 : 0.5, letterSpacing: 0.6 }}>screen awake · {wakeActive ? 'on' : 'off'}</span>
         </div>
@@ -2151,14 +2194,14 @@ function CookingScreen({ recipe, user, isAdmin = false, onNavigate, onDeleted, o
           <Sticker bg={P.red} color={P.bg} rotate={-3} size={9}>by {r.author || 'chef'}</Sticker>
         </div>
         <div style={{ position: 'absolute', bottom: 8, right: 10, display: 'flex', gap: 5 }}>
-          <Sticker bg={P.ink} color={P.bg} rotate={2} size={9}>{r.time || '?'}</Sticker>
-          <Sticker bg={P.yellow} color={P.ink} rotate={-1} size={9}>{r.cooks || 0} cooks</Sticker>
+          <Sticker bg={P.yellow} color={P.ink} rotate={2} size={9}><Icon name="clock" size={8} stroke="currentColor" width={2} style={{ marginRight: 3 }} />{r.time || '?'}</Sticker>
+          <Sticker bg={P.ink} color={P.bg} rotate={-1} size={9}>{r.cooks || 0} cooks</Sticker>
         </div>
       </div>
 
       {/* Title + serves */}
-      <div style={{ padding: '8px 18px 0', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-        <div style={{ font: `800 22px/0.95 'Bricolage Grotesque', sans-serif`, letterSpacing: -0.8, color: P.ink, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(r.title || '').toLowerCase()}</div>
+      <div style={{ padding: '8px 18px 0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ font: `800 22px/1.1 'Bricolage Grotesque', sans-serif`, letterSpacing: -0.8, color: P.ink, flex: 1, minWidth: 0 }}>{(r.title || '').toLowerCase()}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, border: `1.5px solid ${P.ink}`, borderRadius: 999, padding: '3px 3px 3px 9px', flexShrink: 0 }}>
           <Eyebrow style={{ opacity: 0.8, fontSize: 9 }}>serves</Eyebrow>
           <div onClick={() => setServes(s => Math.max(1, s - 1))} style={{ width: 22, height: 22, borderRadius: '50%', border: `1.5px solid ${P.ink}`, display: 'grid', placeItems: 'center', cursor: 'pointer' }}><Icon name="minus" size={10} width={2.5} /></div>
@@ -2174,6 +2217,10 @@ function CookingScreen({ recipe, user, isAdmin = false, onNavigate, onDeleted, o
     return (
       <>
         {topChrome}
+
+        {r.flavor_text && (
+          <div style={{ padding: '6px 18px 0', font: body(13), lineHeight: 1.5, color: P.ink }}>{r.flavor_text}</div>
+        )}
 
         {/* Tab row */}
         <div style={{ padding: '10px 18px 0', display: 'flex', gap: 18, borderBottom: `1.5px solid ${P.ink}22` }}>
@@ -2201,6 +2248,9 @@ function CookingScreen({ recipe, user, isAdmin = false, onNavigate, onDeleted, o
           </div>
         ) : (
           <div style={{ padding: '12px 18px 110px', overflowY: 'auto', height: 'calc(100% - 320px)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {r.source && (
+              <div style={{ font: mono(10), fontStyle: 'italic' }}><span style={{ opacity: 0.45 }}>source · </span>{isUrl(r.source) ? <a href={r.source} target="_blank" rel="noopener noreferrer" style={{ color: P.red, textDecoration: 'underline' }}>{r.source}</a> : r.source}</div>
+            )}
             {steps.length === 0
               ? <div style={{ font: body(14), opacity: 0.4 }}>no steps yet</div>
               : steps.map((s, i) => (
@@ -2212,9 +2262,7 @@ function CookingScreen({ recipe, user, isAdmin = false, onNavigate, onDeleted, o
             }
             {isOwner && detail && (
               <div style={{ marginTop: 4, display: 'flex', justifyContent: 'flex-end' }}>
-                <div onClick={!deleting ? handleDelete : undefined} style={{ font: mono(10), color: confirmDel ? P.bg : P.ink, opacity: confirmDel ? 1 : 0.4, cursor: 'pointer', letterSpacing: 0.5, padding: '6px 12px', borderRadius: 999, background: confirmDel ? P.red : 'transparent', border: `1.5px solid ${confirmDel ? P.red : 'transparent'}`, transition: 'all 0.15s' }}>
-                  {deleting ? 'deleting…' : confirmDel ? 'tap again to confirm' : 'delete recipe'}
-                </div>
+                <DeleteButton onDelete={handleDelete} deleting={deleting} confirmDel={confirmDel} />
               </div>
             )}
           </div>
@@ -2320,7 +2368,15 @@ function DesktopRecipeDetail({ recipe, user, isAdmin = false, onClose, onDeleted
   useEffect(() => {
     setConfirmDel(false); setActiveTab('steps');
     if (!CONFIGURED || DEMO_MODE || !recipe) {
-      setDetail({ ...SAMPLE_DETAIL, title: recipe?.title || SAMPLE_DETAIL.title, author: recipe?.author || SAMPLE_DETAIL.author });
+      setDetail({
+        ...SAMPLE_DETAIL,
+        title:       recipe?.title       || SAMPLE_DETAIL.title,
+        author:      recipe?.author      || SAMPLE_DETAIL.author,
+        flavor_text: recipe?.flavor_text || SAMPLE_DETAIL.flavor_text || '',
+        source:      recipe?.source      || SAMPLE_DETAIL.source      || '',
+        ingredients: recipe?.ingredients?.length ? recipe.ingredients : SAMPLE_DETAIL.ingredients,
+        steps:       recipe?.steps?.length       ? recipe.steps       : SAMPLE_DETAIL.steps,
+      });
       setServes(recipe?.servings || SAMPLE_DETAIL.servings);
       return;
     }
@@ -2330,7 +2386,7 @@ function DesktopRecipeDetail({ recipe, user, isAdmin = false, onClose, onDeleted
         sb.from('ingredients').select('*').eq('recipe_id', recipe.id).order('sort_order'),
         sb.from('steps').select('*').eq('recipe_id', recipe.id).order('sort_order'),
       ]);
-      setDetail({ title: recipe.title, author: recipe.author, time: recipe.time, cooks: recipe.cooks, servings: recipe.servings || 2, ingredients: ings || [], steps: (stps || []).map(s => ({ text: s.text, timer: s.timer_seconds || 0 })) });
+      setDetail({ title: recipe.title, author: recipe.author, time: recipe.time, cooks: recipe.cooks, servings: recipe.servings || 2, flavor_text: recipe.flavor_text || '', source: recipe.source || '', ingredients: ings || [], steps: (stps || []).map(s => ({ text: s.text, timer: s.timer_seconds || 0 })) });
       setServes(recipe.servings || 2);
     })();
   }, [recipe?.id]);
@@ -2372,13 +2428,17 @@ function DesktopRecipeDetail({ recipe, user, isAdmin = false, onClose, onDeleted
             <Sticker bg={P.red} color={P.bg} rotate={-2} size={10}>by {recipe.author}</Sticker>
           </div>
           <div style={{ position: 'absolute', bottom: 10, right: 12, display: 'flex', gap: 5 }}>
-            <Sticker bg={P.ink} color={P.bg} rotate={1} size={9}>{recipe.time}</Sticker>
-            <Sticker bg={P.yellow} color={P.ink} rotate={-2} size={9}>{recipe.cooks} cooks</Sticker>
+            <Sticker bg={P.yellow} color={P.ink} rotate={1} size={9}><Icon name="clock" size={8} stroke="currentColor" width={2} style={{ marginRight: 3 }} />{recipe.time}</Sticker>
+            <Sticker bg={P.ink} color={P.bg} rotate={-2} size={9}>{recipe.cooks} cooks</Sticker>
           </div>
         </div>
 
         <div style={{ padding: '14px 18px 24px' }}>
           <div style={{ font: `800 26px/0.92 'Bricolage Grotesque', sans-serif`, letterSpacing: -0.8, color: P.ink }}>{recipe.title?.toLowerCase()}</div>
+
+          {recipe.flavor_text && (
+            <div style={{ marginTop: 8, font: body(13), lineHeight: 1.55, color: P.ink }}>{recipe.flavor_text}</div>
+          )}
 
           {recipe.tags?.length > 0 && (
             <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 10 }}>
@@ -2420,6 +2480,9 @@ function DesktopRecipeDetail({ recipe, user, isAdmin = false, onClose, onDeleted
             </div>
           ) : (
             <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {recipe.source && (
+                <div style={{ font: mono(10), fontStyle: 'italic' }}><span style={{ opacity: 0.45 }}>source · </span>{isUrl(recipe.source) ? <a href={recipe.source} target="_blank" rel="noopener noreferrer" style={{ color: P.red, textDecoration: 'underline' }}>{recipe.source}</a> : recipe.source}</div>
+              )}
               {steps.length === 0
                 ? <div style={{ font: body(14), opacity: 0.4, marginTop: 8 }}>no steps yet</div>
                 : steps.map((step, i) => (
@@ -2434,9 +2497,7 @@ function DesktopRecipeDetail({ recipe, user, isAdmin = false, onClose, onDeleted
 
           {isOwner && (
             <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
-              <div onClick={!deleting ? handleDelete : undefined} style={{ font: mono(10), color: confirmDel ? P.bg : P.ink, opacity: confirmDel ? 1 : 0.4, cursor: 'pointer', letterSpacing: 0.5, padding: '6px 12px', borderRadius: 999, background: confirmDel ? P.red : 'transparent', border: `1.5px solid ${confirmDel ? P.red : 'transparent'}`, transition: 'all 0.15s' }}>
-                {deleting ? 'deleting…' : confirmDel ? 'tap again to confirm' : 'delete recipe'}
-              </div>
+              <DeleteButton onDelete={handleDelete} deleting={deleting} confirmDel={confirmDel} />
             </div>
           )}
         </div>
@@ -2478,7 +2539,7 @@ function AdminUsersScreen({ currentUserId }) {
           font: mono(10), letterSpacing: 1, textTransform: 'uppercase',
           cursor: disabled ? 'default' : 'pointer',
           opacity: disabled ? 0.35 : active ? 1 : 0.4,
-          transition: 'all 0.12s', userSelect: 'none',
+          transition: 'background 0.12s, border-color 0.12s, color 0.12s', userSelect: 'none',
         }}
       >{label}</div>
     );
@@ -2533,17 +2594,33 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave, init
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [editRecipe, setEditRecipe]         = useState(null);
   const [draftRecipe, setDraftRecipe]       = useState(null);
-  const [query, setQuery]                   = useState('');
-  const desktopSearchRef                    = useRef(null);
-  const [dsQuery, setDsQuery]               = useState('');
-  const [dsActiveFilter, setDsActiveFilter] = useState(null);
-  const [dsSelectedTags, setDsSelectedTags] = useState(new Set());
-  const [dsTimeLimit, setDsTimeLimit]       = useState(null);
-  const [dsSelectedChef, setDsSelectedChef] = useState(null);
-  const [dsPantryQuery, setDsPantryQuery]   = useState('');
-  const [dsPantryIds, setDsPantryIds]       = useState(null);
-  const dsSearchRef                         = useRef(null);
-  const dsPantryRef                         = useRef(null);
+  const [homeQuery, setHomeQuery]           = useState('');
+  const homeSearchRef                       = useRef(null);
+  const [recentlyViewed, setRecentlyViewed] = useState([]);
+  const viewedLogRef                        = useRef([]);
+  const [dsQuery, setDsQuery] = useState('');
+  const dsSearchRef            = useRef(null);
+  const {
+    activeFilter: dsActiveFilter, setActiveFilter: setDsActiveFilter,
+    selectedTags: dsSelectedTags, setSelectedTags: setDsSelectedTags,
+    timeLimit: dsTimeLimit, setTimeLimit: setDsTimeLimit,
+    selectedChef: dsSelectedChef, setSelectedChef: setDsSelectedChef,
+    pantryQuery: dsPantryQuery, setPantryQuery: setDsPantryQuery,
+    pantryIds: dsPantryIds, pantryRef: dsPantryRef,
+    allTags: dsAllTags, chefs: dsChefs,
+    toggleFilter: dsToggleFilter, filterRecipes: dsFilterRecipes, hasActiveFilter: dsHasActiveFilter
+  } = useRecipeFilter(recipes);
+  const {
+    activeFilter: homeActiveFilter, setActiveFilter: setHomeActiveFilter,
+    selectedTags: homeSelectedTags, setSelectedTags: setHomeSelectedTags,
+    timeLimit: homeTimeLimit, setTimeLimit: setHomeTimeLimit,
+    selectedChef: homeSelectedChef, setSelectedChef: setHomeSelectedChef,
+    pantryQuery: homePantryQuery, setPantryQuery: setHomePantryQuery,
+    pantryIds: homePantryIds, pantryRef: homePantryRef,
+    allTags: homeAllTags, chefs: homeChefs,
+    resetFilters: homeResetFilters, toggleFilter: homeToggleFilter,
+    filterRecipes: homeFilterRecipes, hasActiveFilter: homeHasActiveFilter
+  } = useRecipeFilter(recipes);
   const username = user?.user_metadata?.username || user?.email?.split('@')[0] || 'you';
 
   const ROUTABLE = ['home','sheet','search','saved','profile','manual','link','scan'];
@@ -2559,57 +2636,34 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave, init
   function openEdit(r)    { setEditRecipe(r); navigate('manual'); }
   function afterSaved()   { reload(); navigate('home'); }
   function afterDeleted() { setSelectedRecipe(null); reload(); }
+  function openRecipe(r) {
+    viewedLogRef.current = [r, ...viewedLogRef.current.filter(x => x.id !== r.id)].slice(0, 10);
+    setSelectedRecipe(r);
+  }
 
-  const q = query.trim().toLowerCase();
-  const filteredRecipes = q
-    ? recipes.filter(r =>
-        r.title.toLowerCase().includes(q) ||
-        (r.author || '').toLowerCase().includes(q) ||
-        (r.tags || []).some(t => t.includes(q))
-      )
-    : recipes;
+  const homeQ           = homeQuery.trim().toLowerCase();
+  const filteredRecipes = homeFilterRecipes(recipes, homeQ);
+  const homeIsFiltering = homeQ || homeHasActiveFilter;
   const savedRecipes = recipes.filter(r => saved?.has(r.id));
   const myRecipes    = recipes.filter(r => r.author_id === user?.id);
 
   useEffect(() => {
+    if (screen === 'home')   setRecentlyViewed([...viewedLogRef.current]);
     if (screen === 'search') requestAnimationFrame(() => dsSearchRef.current?.focus());
   }, [screen]);
-  useEffect(() => {
-    if (dsActiveFilter === 'pantry') requestAnimationFrame(() => dsPantryRef.current?.focus());
-  }, [dsActiveFilter]);
-  useEffect(() => {
-    if (!CONFIGURED || DEMO_MODE || dsActiveFilter !== 'pantry' || !dsPantryQuery.trim()) { setDsPantryIds(null); return; }
-    const timer = setTimeout(async () => {
-      const { data } = await sb.from('ingredients').select('recipe_id').ilike('item', `%${dsPantryQuery.trim()}%`);
-      setDsPantryIds(new Set((data || []).map(d => d.recipe_id)));
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [dsPantryQuery, dsActiveFilter]);
+  const dsQ        = dsQuery.trim().toLowerCase();
+  const dsFiltered = dsFilterRecipes(recipes, dsQ);
+  const dsIsActive = dsQ || dsHasActiveFilter;
 
-  function parseMinutesDs(t) {
-    if (!t) return null;
-    const h = Number((t.match(/(\d+)\s*h/) || [0,0])[1]);
-    const m = Number((t.match(/(\d+)\s*min/) || [0,0])[1]);
-    return (h * 60 + m) || null;
-  }
-  function dsResetFilters() { setDsSelectedTags(new Set()); setDsTimeLimit(null); setDsSelectedChef(null); setDsPantryQuery(''); setDsPantryIds(null); }
-  function dsToggleFilter(key) { dsResetFilters(); setDsActiveFilter(prev => prev === key ? null : key); }
-
-  const dsQ = dsQuery.trim().toLowerCase();
-  const dsIsActive = dsQ || (dsActiveFilter === 'tags' && dsSelectedTags.size > 0) || (dsActiveFilter === 'time' && dsTimeLimit) || (dsActiveFilter === 'chef' && dsSelectedChef) || (dsActiveFilter === 'pantry' && dsPantryQuery.trim());
-  let dsFiltered = recipes;
-  if (dsQ) dsFiltered = dsFiltered.filter(r => r.title.toLowerCase().includes(dsQ) || (r.author || '').toLowerCase().includes(dsQ) || (r.tags || []).some(t => t.includes(dsQ)));
-  if (dsActiveFilter === 'tags' && dsSelectedTags.size > 0) dsFiltered = dsFiltered.filter(r => [...dsSelectedTags].every(t => (r.tags || []).includes(t)));
-  if (dsActiveFilter === 'time' && dsTimeLimit) dsFiltered = dsFiltered.filter(r => { const m = parseMinutesDs(r.time); return m && m <= dsTimeLimit; });
-  if (dsActiveFilter === 'chef' && dsSelectedChef) dsFiltered = dsFiltered.filter(r => r.author === dsSelectedChef);
-  if (dsActiveFilter === 'pantry' && dsPantryQuery.trim()) {
-    const pq = dsPantryQuery.trim().toLowerCase();
-    if (CONFIGURED) { dsFiltered = dsPantryIds !== null ? dsFiltered.filter(r => dsPantryIds.has(r.id)) : []; }
-    else { dsFiltered = dsFiltered.filter(r => (r.ingredients || []).some(ing => ing.item.toLowerCase().includes(pq))); }
-  }
-  const dsAllTags = [...new Set(recipes.flatMap(r => r.tags || []))].sort();
-  const dsChefs   = [...new Set(recipes.filter(r => !r.is_link && r.author).map(r => r.author))];
   const dsFilterOpts = [
+    { key: 'tags',   label: 'tags'   },
+    { key: 'time',   label: 'time'   },
+    { key: 'chef',   label: 'chef'   },
+    { key: 'pantry', label: 'pantry' },
+  ];
+
+  const homeFilterOpts = [
+    { key: null,     label: 'all'    },
     { key: 'tags',   label: 'tags'   },
     { key: 'time',   label: 'time'   },
     { key: 'chef',   label: 'chef'   },
@@ -2677,22 +2731,66 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave, init
             <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', border: `2px solid ${P.ink}`, borderRadius: 999, boxShadow: `3px 3px 0 ${P.ink}`, maxWidth: 460 }}>
               <Icon name="search" size={17} width={2.2} />
               <input
-                ref={desktopSearchRef}
-                value={query}
-                onChange={e => setQuery(e.target.value)}
+                ref={homeSearchRef}
+                value={homeQuery}
+                onChange={e => setHomeQuery(e.target.value)}
                 placeholder="noodles, layla, under 30 min…"
                 style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', font: body(14), color: P.ink }}
               />
-              {query && <div onClick={() => setQuery('')} style={{ cursor: 'pointer', opacity: 0.45, lineHeight: 0 }}><Icon name="close" size={14} /></div>}
+              {homeQuery && <div onClick={() => setHomeQuery('')} style={{ cursor: 'pointer', opacity: 0.45, lineHeight: 0 }}><Icon name="close" size={14} /></div>}
             </div>
+            {/* Filter chips */}
+            <div style={{ marginTop: 10, display: 'flex', gap: 7 }}>
+              {homeFilterOpts.map(({ key, label }) => {
+                const on = homeActiveFilter === key || (key === null && homeActiveFilter === null);
+                return (
+                  <div key={label} onClick={() => key === null ? (setHomeActiveFilter(null), homeResetFilters()) : homeToggleFilter(key)}
+                    style={{ padding: '5px 12px', borderRadius: 999, border: `1.6px solid ${on ? P.ink : P.ink + '55'}`, background: on ? P.ink : 'transparent', color: on ? P.bg : P.ink, font: body(12, on ? 700 : 500), cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+                    {label}
+                  </div>
+                );
+              })}
+            </div>
+            <FilterPanel
+              activeFilter={homeActiveFilter}
+              selectedTags={homeSelectedTags} setSelectedTags={setHomeSelectedTags}
+              timeLimit={homeTimeLimit} setTimeLimit={setHomeTimeLimit}
+              selectedChef={homeSelectedChef} setSelectedChef={setHomeSelectedChef}
+              pantryQuery={homePantryQuery} setPantryQuery={setHomePantryQuery}
+              pantryIds={homePantryIds} pantryRef={homePantryRef}
+              allTags={homeAllTags} chefs={homeChefs}
+              outerStyle={{ marginTop: 12 }}
+            />
           </div>
-          <div style={{ flex: 1, padding: '18px 32px 32px', overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12, alignContent: 'start' }}>
-            {loading
-              ? <div style={{ gridColumn: '1/-1', paddingTop: 40, textAlign: 'center', font: mono(11), opacity: 0.5, letterSpacing: 1.5, textTransform: 'uppercase' }}>loading…</div>
-              : filteredRecipes.length === 0
-              ? <div style={{ gridColumn: '1/-1', paddingTop: 40, textAlign: 'center', font: mono(11), opacity: 0.5, letterSpacing: 1.5, textTransform: 'uppercase' }}>no results</div>
-              : filteredRecipes.map(r => <RecipeCard key={r.id} r={r} onClick={() => setSelectedRecipe(r)} />)
-            }
+          <div style={{ flex: 1, padding: '18px 32px 32px', overflowY: 'auto' }}>
+            {/* Recently viewed */}
+            {!homeIsFiltering && recentlyViewed.length > 0 && (
+              <div style={{ marginBottom: 18 }}>
+                <Eyebrow style={{ marginBottom: 10 }}>recently viewed</Eyebrow>
+                <div style={{ display: 'flex', gap: 10, overflowX: 'auto', marginLeft: -32, marginRight: -32, paddingLeft: 32, paddingRight: 32, scrollbarWidth: 'none' }}>
+                  {recentlyViewed.map(r => <RecipeMini key={r.id} r={r} onClick={() => openRecipe(r)} />)}
+                </div>
+              </div>
+            )}
+            {!homeIsFiltering && recentlyViewed.length > 0 && <Eyebrow style={{ marginBottom: 12 }}>all recipes</Eyebrow>}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12, alignContent: 'start' }}>
+              {loading
+                ? <div style={{ gridColumn: '1/-1', paddingTop: 40, textAlign: 'center', font: mono(11), opacity: 0.5, letterSpacing: 1.5, textTransform: 'uppercase' }}>loading…</div>
+                : homeIsFiltering && filteredRecipes.length === 0
+                ? <div style={{ gridColumn: '1/-1', paddingTop: 40, textAlign: 'center', font: mono(11), opacity: 0.5, letterSpacing: 1.5, textTransform: 'uppercase' }}>no results</div>
+                : !homeIsFiltering && filteredRecipes.length === 0
+                ? (
+                  <div style={{ gridColumn: '1/-1', paddingTop: 60, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, opacity: 0.5 }}>
+                    <Icon name="sparkle" size={38} width={1.5} />
+                    <div style={{ font: mono(10), letterSpacing: 1.5, textTransform: 'uppercase', textAlign: 'center', lineHeight: 1.8 }}>
+                      your cookbook is empty<br />
+                      <span style={{ opacity: 0.75 }}>click + to add your first recipe</span>
+                    </div>
+                  </div>
+                )
+                : filteredRecipes.map(r => <RecipeCard key={r.id} r={r} onClick={() => openRecipe(r)} />)
+              }
+            </div>
           </div>
         </>}
 
@@ -2712,7 +2810,7 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave, init
                   <div style={{ font: mono(11), opacity: 0.5, letterSpacing: 1.5, textTransform: 'uppercase' }}>nothing saved yet</div>
                   <div style={{ marginTop: 10, font: body(13), opacity: 0.4 }}>bookmark recipes from home</div>
                 </div>
-              : savedRecipes.map(r => <RecipeCard key={r.id} r={r} onClick={() => setSelectedRecipe(r)} />)
+              : savedRecipes.map(r => <RecipeCard key={r.id} r={r} onClick={() => openRecipe(r)} />)
             }
           </div>
         </>}
@@ -2747,73 +2845,16 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave, init
               })}
             </div>
             {/* Filter sub-panels */}
-            {dsActiveFilter === 'tags' && (
-              <div style={{ marginTop: 12 }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {dsAllTags.map(tag => {
-                    const sel = dsSelectedTags.has(tag);
-                    return (
-                      <div key={tag} onClick={() => setDsSelectedTags(prev => { const n = new Set(prev); sel ? n.delete(tag) : n.add(tag); return n; })}
-                        style={{ padding: '5px 10px', borderRadius: 999, border: `1.6px solid ${P.ink}`, background: sel ? P.red : 'transparent', color: sel ? P.bg : P.ink, font: body(12, sel ? 700 : 500), cursor: 'pointer', userSelect: 'none' }}>
-                        {tag}
-                      </div>
-                    );
-                  })}
-                  {dsAllTags.length === 0 && <div style={{ font: mono(10), opacity: 0.4, paddingTop: 2 }}>no tags yet</div>}
-                  {dsSelectedTags.size > 1 && (
-                    <div onClick={() => setDsSelectedTags(new Set())} style={{ color: P.ink, opacity: 0.4, font: mono(9), cursor: 'pointer', userSelect: 'none', letterSpacing: 1.2, textTransform: 'uppercase', alignSelf: 'center', paddingBottom: 1 }}>
-                      clear all
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-            {dsActiveFilter === 'time' && (
-              <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-                {[[20,'≤ 20 min'],[30,'≤ 30 min'],[45,'≤ 45 min']].map(([mins, label]) => (
-                  <div key={mins} onClick={() => setDsTimeLimit(dsTimeLimit === mins ? null : mins)}
-                    style={{ padding: '6px 12px', borderRadius: 999, border: `1.6px solid ${P.ink}`, background: dsTimeLimit === mins ? P.ink : 'transparent', color: dsTimeLimit === mins ? P.bg : P.ink, font: body(12, 600), cursor: 'pointer', userSelect: 'none' }}>
-                    {label}
-                  </div>
-                ))}
-              </div>
-            )}
-            {dsActiveFilter === 'chef' && (
-              <div style={{ marginTop: 12 }}>
-                {dsChefs.length === 0
-                  ? <div style={{ font: mono(10), opacity: 0.4 }}>no chefs yet</div>
-                  : <div style={{ display: 'flex', gap: 16, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 4 }}>
-                      {dsChefs.map(chef => (
-                        <div key={chef} onClick={() => setDsSelectedChef(prev => prev === chef ? null : chef)}
-                          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, flexShrink: 0, cursor: 'pointer' }}>
-                          <div style={{ padding: 3, borderRadius: '50%', border: `2.5px solid ${dsSelectedChef === chef ? P.red : 'transparent'}`, transition: 'border-color 0.15s' }}>
-                            <Avatar name={chef} size={46} />
-                          </div>
-                          <span style={{ font: mono(9, dsSelectedChef === chef ? 700 : 500), letterSpacing: 0.5, color: dsSelectedChef === chef ? P.red : P.ink }}>{chef}</span>
-                        </div>
-                      ))}
-                    </div>
-                }
-              </div>
-            )}
-            {dsActiveFilter === 'pantry' && (
-              <div style={{ marginTop: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', border: `2px solid ${P.ink}`, borderRadius: 12, boxShadow: `2px 2px 0 ${P.ink}`, maxWidth: 460 }}>
-                  <Icon name="search" size={16} width={2} />
-                  <input
-                    ref={dsPantryRef}
-                    value={dsPantryQuery}
-                    onChange={e => setDsPantryQuery(e.target.value)}
-                    placeholder="butter, eggs, garlic…"
-                    style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', font: body(14), color: P.ink }}
-                  />
-                  {dsPantryQuery && <div onClick={() => { setDsPantryQuery(''); setDsPantryIds(null); }} style={{ cursor: 'pointer', opacity: 0.45, lineHeight: 0 }}><Icon name="close" size={13} /></div>}
-                </div>
-                {CONFIGURED && dsPantryQuery.trim() && dsPantryIds === null && (
-                  <div style={{ marginTop: 6, font: mono(9), opacity: 0.45, letterSpacing: 0.5 }}>searching…</div>
-                )}
-              </div>
-            )}
+            <FilterPanel
+              activeFilter={dsActiveFilter}
+              selectedTags={dsSelectedTags} setSelectedTags={setDsSelectedTags}
+              timeLimit={dsTimeLimit} setTimeLimit={setDsTimeLimit}
+              selectedChef={dsSelectedChef} setSelectedChef={setDsSelectedChef}
+              pantryQuery={dsPantryQuery} setPantryQuery={setDsPantryQuery}
+              pantryIds={dsPantryIds} pantryRef={dsPantryRef}
+              allTags={dsAllTags} chefs={dsChefs}
+              outerStyle={{ marginTop: 12 }}
+            />
           </div>
           {/* Results grid */}
           <div style={{ flex: 1, padding: '4px 32px 32px', overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12, alignContent: 'start' }}>
@@ -2829,7 +2870,7 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave, init
             ) : dsFiltered.length === 0 ? (
               <div style={{ gridColumn: '1/-1', paddingTop: 40, textAlign: 'center', font: mono(11), opacity: 0.5, letterSpacing: 1.5, textTransform: 'uppercase' }}>no results</div>
             ) : (
-              dsFiltered.map(r => <RecipeCard key={r.id} r={r} onClick={() => setSelectedRecipe(r)} />)
+              dsFiltered.map(r => <RecipeCard key={r.id} r={r} onClick={() => openRecipe(r)} />)
             )}
           </div>
         </>}
@@ -2862,7 +2903,7 @@ function DesktopLayout({ user, recipes, loading, reload, saved, toggleSave, init
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
               {myRecipes.length === 0
                 ? <div style={{ font: mono(11), opacity: 0.5, letterSpacing: 1.5, textTransform: 'uppercase' }}>no recipes yet</div>
-                : myRecipes.map(r => <RecipeCard key={r.id} r={r} onClick={() => setSelectedRecipe(r)} />)
+                : myRecipes.map(r => <RecipeCard key={r.id} r={r} onClick={() => openRecipe(r)} />)
               }
             </div>
           </div>
@@ -3040,6 +3081,7 @@ function App() {
   const [editRecipe, setEditRecipe]             = useState(null);
   const [draftRecipe, setDraftRecipe]           = useState(null);
   const [recentlyViewed, setRecentlyViewed]     = useState([]);
+  const viewedLogRef                            = useRef([]);
   const [showOnboarding, setShowOnboarding]     = useState(() => CONFIGURED && !DEMO_MODE && !localStorage.getItem('rr_onboarded'));
   const isDesktop                               = useWindowWidth() >= 900;
 
@@ -3057,12 +3099,16 @@ function App() {
     if (goTo) navigate(goTo);
   }
   function openRecipe(r) {
-    setRecentlyViewed(prev => [r, ...prev.filter(x => x.id !== r.id)].slice(0, 8));
+    viewedLogRef.current = [r, ...viewedLogRef.current.filter(x => x.id !== r.id)].slice(0, 8);
     setSelectedRecipe(r); navigate('cooking');
   }
   function openEdit(r)   { setEditRecipe(r); navigate('manual'); }
   function afterSaved()  { reload(); navigate('home'); }
   function afterDeleted(){ setSelectedRecipe(null); reload(); navigate('home'); }
+
+  useEffect(() => {
+    if (screen === 'home') setRecentlyViewed([...viewedLogRef.current]);
+  }, [screen]);
 
   if (user === undefined) {
     return (

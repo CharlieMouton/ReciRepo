@@ -71,7 +71,9 @@ create table public.recipes (
   servings   int  default 2,
   color      text default '#E8C36E',        -- placeholder card colour
   accent     text default '#2F2A2A',
-  source_url text,                          -- for "add via link"
+  source_url  text,                          -- for "add via link"
+  source      text,                          -- user-provided attribution (URL or plain text)
+  flavor_text text,                          -- short overview blurb (≤200 chars)
   image_url  text,                          -- cover photo (Supabase Storage public URL)
   created_at timestamptz default now()
 );
@@ -177,6 +179,8 @@ select
   r.color,
   r.accent,
   r.source_url,
+  r.source,
+  r.flavor_text,
   r.image_url,
   r.created_at,
   count(distinct cl.id)                                        as cook_count,
